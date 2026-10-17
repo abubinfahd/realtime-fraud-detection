@@ -194,15 +194,16 @@ Detailed reproduction steps and troubleshooting guides are available in [docs/02
   - PostgreSQL 16 Alpine with persistent volume and health check
   - Redis 7 Alpine with AOF persistence and health check
   - Dedicated bridge network `fraud-network`
-- [ ] **Stage 2: Relational Database Schema & Index Optimization**
-- [ ] **Stage 3: Offline ML Model Training & Serialization**
-- [ ] **Stage 4: Synthetic High-Frequency Kafka Producer**
-- [ ] **Stage 5: Redis Real-Time Feature Store**
-- [ ] **Stage 6: Core Event Consumer & Real-Time ML Inference Engine**
-- [ ] **Stage 7: PostgreSQL Persistence Layer**
-- [ ] **Stage 8: Redis Pub/Sub Event Fan-Out**
-- [ ] **Stage 9: FastAPI WebSocket Hub**
-- [ ] **Stage 10: Real-Time Dashboard & End-to-End Stress Testing**
+  - Documentation: [docs/02-infrastructure.md](docs/02-infrastructure.md)
+- [ ] **Stage 2: Relational Database Schema & Index Optimization** — [Specification & Guide](docs/stage-02-database.md)
+- [ ] **Stage 3: Offline ML Model Training & Serialization** — [Specification & Guide](docs/stage-03-ml-pipeline.md)
+- [ ] **Stage 4: Synthetic High-Frequency Kafka Producer** — [Specification & Guide](docs/stage-04-kafka-producer.md)
+- [ ] **Stage 5: Redis Real-Time Feature Store** — [Specification & Guide](docs/stage-05-redis-feature-store.md)
+- [ ] **Stage 6: Core Event Consumer & Real-Time ML Inference Engine** — [Specification & Guide](docs/stage-06-inference-engine.md)
+- [ ] **Stage 7: PostgreSQL Persistence Layer** — [Specification & Guide](docs/stage-07-postgres-persistence.md)
+- [ ] **Stage 8: Redis Pub/Sub Event Fan-Out** — [Specification & Guide](docs/stage-08-redis-pubsub.md)
+- [ ] **Stage 9: FastAPI WebSocket Hub** — [Specification & Guide](docs/stage-09-fastapi-websocket.md)
+- [ ] **Stage 10: Real-Time Dashboard & End-to-End Stress Testing** — [Specification & Guide](docs/stage-10-dashboard-and-stress-testing.md)
 
 ---
 
