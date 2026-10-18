@@ -18,6 +18,9 @@ The **Real-Time Fraud Detection System** is an event-driven, low-latency streami
 | **Stage 8** | Redis Pub/Sub Event Fan-Out | *Planned* | High-risk alert publication |
 | **Stage 9** | FastAPI WebSocket Gateway | *Planned* | Live alert streaming & client lifecycle |
 | **Stage 10** | Real-Time Dashboard & Stress Benchmarks | *Planned* | Frontend UI, load & resilience testing |
+| **Stage 11** | MLOps: Experiment Tracking & Drift Monitoring | *Planned* | MLflow, model registry, PSI drift evaluation |
+| **Stage 12** | CI/CD: Automated Testing & Container Packaging | *Planned* | GitHub Actions, Ruff, Mypy, Pytest, ACR push |
+| **Stage 13** | Microsoft Azure Cloud Deployment & UI Host | *Planned* | Azure VM/ACA, budget alerts, public live dashboard |
 
 ---
 
