@@ -70,6 +70,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import asyncio
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Initialize Redis pool & launch background subscriber

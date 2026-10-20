@@ -13,7 +13,7 @@ services:
       KAFKA_PROCESS_ROLES: 'broker,controller'
       CLUSTER_ID: '${KAFKA_CLUSTER_ID:-MkU3OEVBNTcwNTJENDM2Qk}'
       KAFKA_CLUSTER_ID: '${KAFKA_CLUSTER_ID:-MkU3OEVBNTcwNTJENDM2Qk}'
-      
+
       # Listener architecture:
       # - PLAINTEXT (29092): For containers on fraud-network
       # - EXTERNAL (9092): For local host services (uv/Python processes)
@@ -24,7 +24,7 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
-      
+
       # Single-broker development reliability settings
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
@@ -55,6 +55,7 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - fraud-network
     healthcheck:

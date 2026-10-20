@@ -91,7 +91,7 @@ PROMOTION_GATES = {
     "min_pr_auc": 0.850,
     "min_f1_score": 0.800,
     "max_inference_latency_ms": 3.0,
-    "max_false_positive_rate": 0.05
+    "max_false_positive_rate": 0.05,
 }
 ```
 

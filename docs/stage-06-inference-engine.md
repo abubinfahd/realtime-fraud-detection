@@ -28,7 +28,7 @@ Stage 6 builds the core real-time processing engine: the **Inference Consumer Wo
 ```mermaid
 flowchart TD
     KAFKA["Kafka Topic: transactions\n(Partition keyed by user_id)"] -->|Poll Batch| CONSUMER["Fraud Consumer Worker"]
-    
+
     subgraph Step1["1. Validation & Parsing"]
         CONSUMER --> SCHEMA{"Pydantic Validation"}
         SCHEMA -->|Valid Event| FS_LOOKUP["Valid Event"]

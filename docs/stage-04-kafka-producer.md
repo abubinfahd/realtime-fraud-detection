@@ -104,7 +104,7 @@ producer_config = {
     "batch.num.messages": 1000,
     "compression.type": "snappy",  # High-speed CPU compression
     "queue.buffering.max.messages": 100000,
-    "queue.buffering.max.kbytes": 65536
+    "queue.buffering.max.kbytes": 65536,
 }
 ```
 

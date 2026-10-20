@@ -86,3 +86,7 @@ artifacts/*
 !artifacts/.gitkeep
 data/*
 !data/.gitkeep
+!data/demo_inference_10.csv
+!data/raw/
+!data/raw/transactions_10k.csv
+!data/raw/demo_inference_10.csv

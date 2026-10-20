@@ -102,7 +102,7 @@ db_pool = await asyncpg.create_pool(
     max_size=20,
     max_queries=50000,
     max_inactive_connection_lifetime=300.0,
-    timeout=10.0
+    timeout=10.0,
 )
 ```
 

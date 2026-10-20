@@ -2,7 +2,7 @@
 
 ## 1. Stage Objective & Scope
 
-Stage 8 introduces real-time alert broadcasting from the backend inference engine to edge delivery hubs using **Redis Pub/Sub**. 
+Stage 8 introduces real-time alert broadcasting from the backend inference engine to edge delivery hubs using **Redis Pub/Sub**.
 
 In high-throughput financial architectures, the backend consumer workers must remain decoupled from edge user interfaces:
 - Consumer workers must focus on Kafka ingestion, ML scoring, and database commits.

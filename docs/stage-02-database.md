@@ -7,8 +7,8 @@ Stage 2 focuses on creating the relational foundation and persistent system of r
 **Primary Deliverable:** `database/init.sql` mounted into `/docker-entrypoint-initdb.d/init.sql` on the PostgreSQL container, establishing tables, constraints, foreign keys, exact monetary precision types, JSONB feature stores, and specialized composite B-Tree indexes.
 
 > [!IMPORTANT]
-> **Execution Status:** **SPECIFICATION & DESIGN PHASE**.
-> Implementation of `database/init.sql` and container execution will occur only when explicitly triggered via `Start Step 2`.
+> **Execution Status:** **IMPLEMENTED & READY FOR VERIFICATION**.
+> Complete DDL script available in `database/init.sql` and mounted into `docker-compose.yml`.
 
 ---
 
@@ -121,7 +121,7 @@ The immutable transactional audit ledger containing both financial payloads and 
 
 ### Index 1: Composite B-Tree on `(user_id, created_at DESC)`
 ```sql
-CREATE INDEX idx_transactions_user_created 
+CREATE INDEX idx_transactions_user_created
 ON transactions (user_id, created_at DESC);
 ```
 - **Why this index exists:** Fraud investigations and customer service queries require retrieving the most recent transactions for a specific user (e.g., `SELECT * FROM transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`).
@@ -129,8 +129,8 @@ ON transactions (user_id, created_at DESC);
 
 ### Index 2: Status & Time B-Tree on `(status, created_at DESC)`
 ```sql
-CREATE INDEX idx_transactions_status_created 
-ON transactions (status, created_at DESC) 
+CREATE INDEX idx_transactions_status_created
+ON transactions (status, created_at DESC)
 WHERE status IN ('FLAGGED', 'REJECTED');
 ```
 - **Partial Index Strategy:** 98%+ of normal transactions will be `APPROVED`. By indexing only `FLAGGED` and `REJECTED` rows, the index size remains minimal (~2% of the table size), keeping it completely resident in RAM for fast operational dashboard queries.

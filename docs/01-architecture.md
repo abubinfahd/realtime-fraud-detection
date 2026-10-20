@@ -9,8 +9,8 @@ The **Real-Time Fraud Detection System** is an event-driven, low-latency streami
 | Layer / Stage | Component | Status | Notes |
 | :--- | :--- | :--- | :--- |
 | **Stage 1** | Container Orchestration (Kafka KRaft, Postgres, Redis) | **Implemented** | Local infrastructure running via Docker Compose |
-| **Stage 2** | Relational DB Schema & Index Optimization | *Planned* | DDL, constraints, composite indexes |
-| **Stage 3** | Offline ML Model Training & Serialization | *Planned* | LightGBM + Isolation Forest |
+| **Stage 2** | Relational DB Schema & Index Optimization | **Implemented** | DDL, constraints, composite B-tree & partial indexes |
+| **Stage 3** | Offline ML Model Training & Serialization | **Implemented** | LightGBM + Isolation Forest, PR-AUC, CPU benchmark |
 | **Stage 4** | Synthetic High-Frequency Kafka Producer | *Planned* | Configurable TPS with anomaly injection |
 | **Stage 5** | Redis Real-Time Feature Store | *Planned* | Sliding time windows with Sorted Sets |
 | **Stage 6** | Consumer & Real-Time ML Inference Engine | *Planned* | Feature assembly, rule evaluation, verdicts |
