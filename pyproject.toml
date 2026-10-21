@@ -16,6 +16,7 @@ dependencies = [
     "uvicorn[standard]>=0.30.0",
     "confluent-kafka>=2.4.0",
     "faker>=25.0.0",
+    "redis>=5.0.0",
 ]
 
 [dependency-groups]
@@ -44,6 +45,7 @@ dev = [
 fraud-train = "fraud_detection.ml.train:main"
 fraud-infer = "fraud_detection.ml.inference:main"
 fraud-producer = "fraud_detection.streaming.producer:main"
+fraud-redis-benchmark = "fraud_detection.storage.benchmark:main"
 
 
 [build-system]
@@ -60,6 +62,9 @@ target-version = "py312"
 [tool.ruff.lint.per-file-ignores]
 "main.py" = ["E402"]
 "producers/*" = ["E402"]
+"storage/*" = ["E402"]
+"benchmarks/*" = ["E402"]
+
 
 
 [tool.mypy]

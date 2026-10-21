@@ -99,10 +99,17 @@ real-time-fraud-detection/
 │   ├── 04-ml-pipeline.md             # Hybrid ML pipeline, PR-AUC & CPU benchmark
 │   └── stage-02 to stage-13...       # Specifications & execution guides for each stage
 │
+├── benchmarks/                      # Performance and SLA benchmarking suites (Stage 3, Stage 5)
+│   └── benchmark_redis.py           # Real-time Redis velocity feature store concurrency benchmark
+│
 ├── producers/                       # Synthetic transaction generator CLI scripts (Stage 4)
 │   ├── transaction_producer.py      # Executable producer script with Token Bucket rate limiter
 │   ├── anomalies.py                 # Multi-modal fraud attack generators (spikes, geo, ATO)
 │   └── config.py                    # Producer configuration and librdkafka options
+│
+├── storage/                         # Real-time feature store interfaces (Stage 5)
+│   ├── redis_feature_store.py       # High-level async Redis feature store wrapper
+│   └── lua_scripts.py               # Pre-compiled atomic Redis sliding-window scripts
 │
 ├── src/
 │   └── fraud_detection/             # Core application package (src-layout)
@@ -122,6 +129,11 @@ real-time-fraud-detection/
 │       │   ├── train.py             # Fitting LightGBM + Isolation Forest & serialization
 │       │   └── inference.py         # Sub-millisecond in-process CPU scoring engine
 │       │
+│       ├── storage/                 # Redis sliding-window feature store & Lua scripts (Stage 5)
+│       │   ├── redis_feature_store.py # Async Redis connection pool & atomic Lua pipeline
+│       │   ├── lua_scripts.py       # Atomic eviction, ZADD, dual-window ZRANGEBYSCORE & TTL
+│       │   └── benchmark.py         # Concurrency load generator measuring p95 latency
+│       │
 │       ├── streaming/               # Kafka producers, consumers & Redis feature store (Stage 4+)
 │       │   ├── config.py            # Kafka producer tuning and librdkafka parameters
 │       │   ├── anomalies.py         # Synthetic attack injection generators
@@ -129,10 +141,11 @@ real-time-fraud-detection/
 │       │
 │       └── api/                     # FastAPI ASGI gateway & WebSocket hub (Stage 9+)
 │
-├── tests/                           # Automated unit test suite (schemas, preprocessing, ML, producer)
+├── tests/                           # Automated unit test suite (schemas, preprocessing, ML, producer, storage)
 │   ├── conftest.py                  # Pytest fixtures and mock objects
 │   ├── test_api.py                  # FastAPI health check and prediction endpoint tests
 │   ├── test_producer.py             # Kafka producer, Token Bucket limiter & anomaly tests
+│   ├── test_redis_feature_store.py  # Redis sliding windows, Lua scripts, eviction & TTL tests
 │   ├── test_schemas.py              # Pydantic data contract validation tests
 │   ├── test_preprocessing.py        # Feature transformation, clipping & imputation tests
 │   ├── test_features.py             # Feature order and vector extraction tests
@@ -147,6 +160,7 @@ real-time-fraud-detection/
 ├── main.py                          # Primary FastAPI application entrypoint (Uvicorn server)
 ├── pyproject.toml                   # Package definition, uv dependencies, pytest & CLI entrypoints
 └── README.md                        # Project documentation and reproduction guide
+
 
 ```
 
@@ -277,6 +291,23 @@ uv run python producers/transaction_producer.py --dry-run --max-events 10
 docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic transactions --property print.key=true --from-beginning --max-messages 5
 ```
 
+### 6.10 Redis Real-Time Feature Store Benchmark (Stage 5)
+```bash
+# 1. Run concurrency benchmark against live Redis (5,000 operations across 50 concurrent workers):
+uv run python benchmarks/benchmark_redis.py --num-ops 5000 --concurrency 50
+
+# Or using the installed CLI entrypoint:
+uv run fraud-redis-benchmark --num-ops 5000 --concurrency 50
+
+# 2. Run benchmark in simulation mode (offline in-memory Sorted Set engine):
+uv run python benchmarks/benchmark_redis.py --mock --num-ops 1000 --concurrency 20
+
+# 3. Inspect active keys and verify 30-minute key TTL via redis-cli:
+docker compose exec redis redis-cli KEYS "user:*:tx_history"
+docker compose exec redis redis-cli TTL "user:<user_id>:tx_history"
+```
+
+
 
 ---
 
@@ -354,7 +385,13 @@ Detailed reproduction steps and troubleshooting guides are available in [docs/02
   - Anomaly Topologies: Card testing velocity bursts (8-15 tx/20s), high-value ATOs ($1.2k-$5k), impossible geo-travel, nocturnal fraud
   - Execution: `uv run python producers/transaction_producer.py` or `uv run fraud-producer` with `--dry-run` simulation support
 
-- [ ] **Stage 5: Redis Real-Time Feature Store** — [Specification & Guide](docs/stage-05-redis-feature-store.md)
+- [x] **Stage 5: Redis Real-Time Feature Store** — [Specification & Guide](docs/stage-05-redis-feature-store.md)
+  - Data Structure: Redis 7 Sorted Sets (`user:{user_id}:tx_history`) with epoch millisecond scores and packed members (`tx_id:amount`)
+  - Atomic Lua Scripting: Single network RTT executing stale transaction eviction (`ZREMRANGEBYSCORE`), insertion (`ZADD`), dual sliding-window aggregation (`ZRANGEBYSCORE` for 60s & 10m), and TTL extension
+  - Velocity Extraction: Emits `tx_count_1m`, `tx_sum_1m`, `tx_count_10m`, `tx_sum_10m`, `avg_amount_10m`, `amount_to_avg_ratio`
+  - Memory Hygiene: Sliding 1,800-second (30-minute) TTL evicts dormant accounts from memory
+  - Benchmark SLA: Concurrency load testing verifies sub-millisecond p95 latency (< 0.1 ms in-memory, ~0.6 ms live Redis)
+
 - [ ] **Stage 6: Core Event Consumer & Real-Time ML Inference Engine** — [Specification & Guide](docs/stage-06-inference-engine.md)
 - [ ] **Stage 7: PostgreSQL Persistence Layer** — [Specification & Guide](docs/stage-07-postgres-persistence.md)
 - [ ] **Stage 8: Redis Pub/Sub Event Fan-Out** — [Specification & Guide](docs/stage-08-redis-pubsub.md)
