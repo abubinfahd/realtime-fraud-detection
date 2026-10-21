@@ -14,6 +14,8 @@ dependencies = [
     "pydantic-settings>=2.2.0",
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.30.0",
+    "confluent-kafka>=2.4.0",
+    "faker>=25.0.0",
 ]
 
 [dependency-groups]
@@ -41,6 +43,7 @@ dev = [
 [project.scripts]
 fraud-train = "fraud_detection.ml.train:main"
 fraud-infer = "fraud_detection.ml.inference:main"
+fraud-producer = "fraud_detection.streaming.producer:main"
 
 
 [build-system]
@@ -56,6 +59,7 @@ target-version = "py312"
 
 [tool.ruff.lint.per-file-ignores]
 "main.py" = ["E402"]
+"producers/*" = ["E402"]
 
 
 [tool.mypy]

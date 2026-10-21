@@ -53,6 +53,15 @@ class Settings(BaseSettings):
     KAFKA_TOPIC_DLQ: str = "transactions-dlq"
     KAFKA_CONSUMER_GROUP: str = "fraud-inference-engine"
 
+    # Kafka Producer Tuning
+    KAFKA_PRODUCER_CLIENT_ID: str = "fraud-synthetic-producer"
+    KAFKA_PRODUCER_ACKS: str = "1"
+    KAFKA_PRODUCER_LINGER_MS: int = 5
+    KAFKA_PRODUCER_BATCH_NUM_MESSAGES: int = 1000
+    KAFKA_PRODUCER_COMPRESSION_TYPE: str = "snappy"
+    KAFKA_PRODUCER_QUEUE_MAX_MESSAGES: int = 100000
+    KAFKA_PRODUCER_QUEUE_MAX_KBYTES: int = 65536
+
     # Model Inference & Decision Thresholds
     FRAUD_THRESHOLD_LOW: float = 0.40
     FRAUD_THRESHOLD_HIGH: float = 0.75

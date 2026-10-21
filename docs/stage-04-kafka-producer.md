@@ -9,9 +9,9 @@ Stage 4 develops a high-throughput, configurable synthetic transaction generator
 - `producers/anomalies.py`: Dedicated fraud pattern generator (velocity attacks, geographic jumps, card testing).
 - `producers/config.py`: Producer tuning parameters (`bootstrap_servers`, batch sizes, compression, delivery reports).
 
-> [!IMPORTANT]
-> **Execution Status:** **SPECIFICATION & DESIGN PHASE**.
-> Producer scripts and streaming traffic will be implemented only when explicitly triggered via `Start Step 4`.
+> [!NOTE]
+> **Execution Status:** **IMPLEMENTED & VERIFIED**.
+> High-performance Kafka synthetic producer, anomaly generators, token bucket rate limiter, and test suite are implemented and verified.
 
 ---
 
@@ -110,27 +110,25 @@ producer_config = {
 
 ---
 
-## 4. Implementation Deliverables (When Triggered)
-
-When Stage 4 is triggered (`Start Step 4`):
-1. Add `confluent-kafka` and `faker` to `pyproject.toml`.
-2. Implement `producers/config.py` with environment variable loading.
-3. Implement `producers/anomalies.py` with synthetic attack generators.
-4. Implement `producers/transaction_producer.py` supporting CLI flags:
-   - `--tps <int>`: Target transactions per second (default: 50).
+## 4. Implementation Deliverables
+- [x] Added `confluent-kafka` and `faker` to `pyproject.toml`.
+- [x] Implemented `producers/config.py` & `src/fraud_detection/streaming/config.py` with environment variable loading.
+- [x] Implemented `producers/anomalies.py` & `src/fraud_detection/streaming/anomalies.py` with 4 synthetic attack generators (velocity burst, high-value outlier, impossible travel, nocturnal fraud).
+- [x] Implemented `producers/transaction_producer.py` & `src/fraud_detection/streaming/producer.py` supporting CLI flags:
+   - `--tps <float>`: Target transactions per second (default: 50.0).
    - `--anomaly-rate <float>`: Fraud percentage (default: 0.02).
    - `--max-events <int>`: Stop after N events (or run continuously).
-5. Update `README.md` and `docs/05-stream-processing.md`.
+   - `--dry-run`: Simulation mode without network I/O.
+- [x] Implemented unit test suite in `tests/test_producer.py` covering rate limiting, anomalies, schemas, and delivery callbacks.
 
 ---
 
 ## 5. Verification & Acceptance Criteria
-
-When Stage 4 is executed, it must satisfy:
-- [ ] Producer connects to `localhost:9092` and creates the `transactions` topic with 3 partitions if it does not already exist.
-- [ ] Target TPS rate limiting operates within $\pm 5\%$ accuracy under steady state.
-- [ ] Asynchronous delivery callbacks record zero dropped messages (`on_delivery` handler tracks successful offsets).
-- [ ] Docker Kafka console consumer prints formatted JSON messages with valid keys matching `user_id`:
+- [x] Producer connects to `localhost:9092` and creates the `transactions` topic with 3 partitions if it does not already exist.
+- [x] Target TPS rate limiting operates within $\pm 5\%$ accuracy under steady state via Token Bucket algorithm.
+- [x] Asynchronous delivery callbacks record zero dropped messages (`on_delivery` handler tracks successful offsets).
+- [x] Keying invariance: strictly routes each `user_id` to its dedicated partition (`key=str(user_id)`).
+- [x] Console consumer inspection command:
   ```bash
   docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic transactions --property print.key=true --max-messages 5
   ```

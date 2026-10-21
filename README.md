@@ -99,6 +99,11 @@ real-time-fraud-detection/
 │   ├── 04-ml-pipeline.md             # Hybrid ML pipeline, PR-AUC & CPU benchmark
 │   └── stage-02 to stage-13...       # Specifications & execution guides for each stage
 │
+├── producers/                       # Synthetic transaction generator CLI scripts (Stage 4)
+│   ├── transaction_producer.py      # Executable producer script with Token Bucket rate limiter
+│   ├── anomalies.py                 # Multi-modal fraud attack generators (spikes, geo, ATO)
+│   └── config.py                    # Producer configuration and librdkafka options
+│
 ├── src/
 │   └── fraud_detection/             # Core application package (src-layout)
 │       ├── core/                    # Shared settings (pydantic-settings) & structured JSON logger
@@ -118,11 +123,16 @@ real-time-fraud-detection/
 │       │   └── inference.py         # Sub-millisecond in-process CPU scoring engine
 │       │
 │       ├── streaming/               # Kafka producers, consumers & Redis feature store (Stage 4+)
+│       │   ├── config.py            # Kafka producer tuning and librdkafka parameters
+│       │   ├── anomalies.py         # Synthetic attack injection generators
+│       │   └── producer.py          # Async transaction producer with Token Bucket limiter
+│       │
 │       └── api/                     # FastAPI ASGI gateway & WebSocket hub (Stage 9+)
 │
-├── tests/                           # Automated unit test suite (schemas, preprocessing, ML, inference, API)
+├── tests/                           # Automated unit test suite (schemas, preprocessing, ML, producer)
 │   ├── conftest.py                  # Pytest fixtures and mock objects
 │   ├── test_api.py                  # FastAPI health check and prediction endpoint tests
+│   ├── test_producer.py             # Kafka producer, Token Bucket limiter & anomaly tests
 │   ├── test_schemas.py              # Pydantic data contract validation tests
 │   ├── test_preprocessing.py        # Feature transformation, clipping & imputation tests
 │   ├── test_features.py             # Feature order and vector extraction tests
@@ -137,6 +147,7 @@ real-time-fraud-detection/
 ├── main.py                          # Primary FastAPI application entrypoint (Uvicorn server)
 ├── pyproject.toml                   # Package definition, uv dependencies, pytest & CLI entrypoints
 └── README.md                        # Project documentation and reproduction guide
+
 ```
 
 ---
@@ -250,6 +261,23 @@ uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
 - **Health & Readiness Probe:** [`http://localhost:8000/healthz`](http://localhost:8000/healthz)
 - **Real-Time Fraud Scoring Endpoint:** `POST http://localhost:8000/api/v1/predict`
 
+### 6.9 Synthetic High-Frequency Kafka Producer (Stage 4)
+```bash
+# 1. Start continuous Kafka producer streaming at 50 TPS with 2% anomaly injection
+uv run python producers/transaction_producer.py --tps 50 --anomaly-rate 0.02
+
+# Or use the installed CLI entrypoint:
+uv run fraud-producer --tps 50 --anomaly-rate 0.02
+
+# 2. Run simulation in dry-run mode (emits 10 formatted events without requiring Kafka):
+uv run python producers/transaction_producer.py --dry-run --max-events 10
+
+# 3. Verify live messages consumed from Kafka cluster:
+# Windows PowerShell (single line):
+docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic transactions --property print.key=true --from-beginning --max-messages 5
+```
+
+
 ---
 
 
@@ -319,7 +347,13 @@ Detailed reproduction steps and troubleshooting guides are available in [docs/02
   - F1-Score threshold optimization on validation split (dual thresholds: `APPROVED`, `FLAGGED`, `REJECTED`)
   - Serialization: Compressed bundle in `artifacts/fraud_model.joblib`
   - In-process CPU Inference Benchmark: < 1.0 ms mean latency per transaction
-- [ ] **Stage 4: Synthetic High-Frequency Kafka Producer** — [Specification & Guide](docs/stage-04-kafka-producer.md)
+- [x] **Stage 4: Synthetic High-Frequency Kafka Producer** — [Specification & Guide](docs/stage-04-kafka-producer.md)
+  - Engine: Asynchronous `confluent-kafka` producer with C-level `librdkafka` tuning (`linger.ms=5`, `snappy` compression)
+  - Rate Limiting: Token Bucket algorithm for steady-state throughput (configurable TPS via `--tps`)
+  - Key Invariance: Strictly routes messages with `key=str(user_id)` to guarantee intra-partition chronological order
+  - Anomaly Topologies: Card testing velocity bursts (8-15 tx/20s), high-value ATOs ($1.2k-$5k), impossible geo-travel, nocturnal fraud
+  - Execution: `uv run python producers/transaction_producer.py` or `uv run fraud-producer` with `--dry-run` simulation support
+
 - [ ] **Stage 5: Redis Real-Time Feature Store** — [Specification & Guide](docs/stage-05-redis-feature-store.md)
 - [ ] **Stage 6: Core Event Consumer & Real-Time ML Inference Engine** — [Specification & Guide](docs/stage-06-inference-engine.md)
 - [ ] **Stage 7: PostgreSQL Persistence Layer** — [Specification & Guide](docs/stage-07-postgres-persistence.md)
