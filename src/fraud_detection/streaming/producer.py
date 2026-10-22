@@ -9,11 +9,11 @@ Features:
 """
 
 import argparse
-from datetime import UTC, datetime
 import json
 import random
 import signal
 import time
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 

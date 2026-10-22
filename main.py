@@ -19,9 +19,9 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-import uvicorn  # noqa: E402
+import uvicorn
 
-from fraud_detection.api.app import create_app  # noqa: E402
+from fraud_detection.api.app import create_app
 
 # Instantiate top-level ASGI application
 app = create_app()

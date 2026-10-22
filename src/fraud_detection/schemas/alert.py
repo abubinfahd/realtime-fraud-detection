@@ -66,7 +66,7 @@ class FraudAlertEvent(BaseModel):
 
 __all__ = [
     "AlertSignals",
-    "VelocityContext",
     "FraudAlert",
     "FraudAlertEvent",
+    "VelocityContext",
 ]

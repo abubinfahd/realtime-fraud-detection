@@ -8,9 +8,9 @@ Features:
 - Seamless in-memory fallback simulator for offline testing and development.
 """
 
+import time
 from collections import defaultdict
 from datetime import UTC, datetime
-import time
 from typing import Any
 from uuid import UUID
 
@@ -32,6 +32,8 @@ class InMemorySortedSetStore:
         self._sets: dict[str, list[tuple[int, str]]] = defaultdict(list)
         # key -> expire_timestamp_s
         self._ttls: dict[str, float] = {}
+        # key -> location dict
+        self._locations: dict[str, dict[str, Any]] = {}
 
     def ingest(
         self,
@@ -107,11 +109,20 @@ class InMemorySortedSetStore:
         remaining = int(self._ttls[key] - time.time())
         return max(remaining, 0)
 
+    def get_last_location(self, key: str) -> dict[str, Any] | None:
+        """Return the most recent recorded location dict for a user."""
+        return self._locations.get(key)
+
+    def set_last_location(self, key: str, location_data: dict[str, Any]) -> None:
+        """Record the most recent location dict for a user."""
+        self._locations[key] = location_data
+
     def delete(self, key: str) -> bool:
         """Delete key."""
-        existed = key in self._sets
+        existed = key in self._sets or key in self._locations
         self._sets.pop(key, None)
         self._ttls.pop(key, None)
+        self._locations.pop(key, None)
         return existed
 
 
@@ -164,7 +175,7 @@ class RedisFeatureStore:
             self._in_memory = InMemorySortedSetStore()
 
     @staticmethod
-    def _parse_timestamp_ms(timestamp: datetime | float | int | None) -> int:
+    def _parse_timestamp_ms(timestamp: datetime | float | None) -> int:
         """Convert datetime or timestamp to epoch milliseconds."""
         if timestamp is None:
             return int(time.time() * 1000)
@@ -182,14 +193,19 @@ class RedisFeatureStore:
     @staticmethod
     def get_user_key(user_id: UUID | str) -> str:
         """Generate canonical Redis Sorted Set key for user velocity history."""
-        return f"user:{str(user_id)}:tx_history"
+        return f"user:{user_id!s}:tx_history"
+
+    @staticmethod
+    def get_location_key(user_id: UUID | str) -> str:
+        """Generate canonical Redis key for user's last known geolocation."""
+        return f"user:{user_id!s}:last_location"
 
     async def update_and_get_velocity_features(
         self,
         user_id: UUID | str,
         transaction_id: str,
         amount: float,
-        timestamp: datetime | float | int | None = None,
+        timestamp: datetime | float | None = None,
     ) -> dict[str, float]:
         """Atomically record a transaction and return trailing velocity features in < 1 ms.
 
@@ -269,7 +285,7 @@ class RedisFeatureStore:
         self,
         user_id: UUID | str,
         current_amount: float = 0.0,
-        timestamp: datetime | float | int | None = None,
+        timestamp: datetime | float | None = None,
     ) -> dict[str, float]:
         """Query trailing velocity metrics without writing a new transaction record."""
         if self._client is None and not self.mock_mode:
@@ -324,13 +340,64 @@ class RedisFeatureStore:
             return self._in_memory.get_ttl(key)
         return await self._client.ttl(key)
 
-    async def reset_user_history(self, user_id: UUID | str) -> bool:
-        """Reset / delete velocity state for a given user."""
-        key = self.get_user_key(user_id)
+    async def get_last_location(self, user_id: UUID | str) -> dict[str, Any] | None:
+        """Retrieve user's previous recorded geolocation and timestamp."""
+        key = self.get_location_key(user_id)
         if self.mock_mode or self._client is None:
             assert self._in_memory is not None
-            return self._in_memory.delete(key)
-        res = await self._client.delete(key)
+            return self._in_memory.get_last_location(key)
+        try:
+            raw = await self._client.get(key)
+            if raw:
+                import json
+
+                return json.loads(raw)
+        except Exception as exc:
+            logger.warning("Error fetching last location from Redis", extra={"error": str(exc)})
+        return None
+
+    async def set_last_location(
+        self,
+        user_id: UUID | str,
+        lat: float,
+        lon: float,
+        timestamp: datetime | float | None = None,
+        country: str | None = None,
+        city: str | None = None,
+        ttl_seconds: int = 86400,
+    ) -> None:
+        """Store user's latest geolocation with timestamp for velocity/impossible travel checks."""
+        key = self.get_location_key(user_id)
+        ts_ms = self._parse_timestamp_ms(timestamp)
+        payload = {
+            "lat": float(lat),
+            "lon": float(lon),
+            "timestamp_ms": ts_ms,
+            "country": country or "US",
+            "city": city or "Unknown",
+        }
+        if self.mock_mode or self._client is None:
+            assert self._in_memory is not None
+            self._in_memory.set_last_location(key, payload)
+            return
+
+        try:
+            import json
+
+            await self._client.set(key, json.dumps(payload), ex=ttl_seconds)
+        except Exception as exc:
+            logger.warning("Error setting last location in Redis", extra={"error": str(exc)})
+
+    async def reset_user_history(self, user_id: UUID | str) -> bool:
+        """Reset / delete velocity state and last location for a given user."""
+        u_key = self.get_user_key(user_id)
+        l_key = self.get_location_key(user_id)
+        if self.mock_mode or self._client is None:
+            assert self._in_memory is not None
+            res1 = self._in_memory.delete(u_key)
+            res2 = self._in_memory.delete(l_key)
+            return res1 or res2
+        res = await self._client.delete(u_key, l_key)
         return bool(res > 0)
 
     async def close(self) -> None:

@@ -7,6 +7,7 @@ feature vectors with sub-millisecond execution latency.
 
 import time
 import warnings
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,7 @@ import numpy as np
 
 from fraud_detection.core.config import settings
 from fraud_detection.core.logger import get_logger
+from fraud_detection.ml.features import FEATURE_NAMES, extract_features
 
 logger = get_logger(__name__)
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -154,6 +156,71 @@ class InferenceEngine:
             "risk_score": round(composite_risk, 4),
             "status": status,
             "latency_ms": round(latency_ms, 3),
+        }
+
+    def score_transaction(
+        self,
+        transaction: Mapping[str, Any],
+        velocity: Mapping[str, Any] | None = None,
+        rule_result: Any | None = None,
+    ) -> dict[str, Any]:
+        """
+        Execute unified scoring on a single transaction dictionary.
+
+        Integrates feature extraction, ML inference, and deterministic rule overrides.
+        """
+        t0 = time.perf_counter()
+        feat_vec = extract_features(transaction, velocity)
+        pred = self.predict(feat_vec)
+
+        fraud_prob = pred["fraud_probability"]
+        anomaly_score = pred["anomaly_score"]
+        raw_risk = pred["risk_score"]
+        model_status = pred["status"]
+
+        # Rule penalty & override handling
+        rule_violations = []
+        reasons = []
+        override_verdict = None
+        rule_penalty = 0.0
+
+        if rule_result is not None:
+            rule_violations = [v.rule_code for v in getattr(rule_result, "violations", [])]
+            reasons = list(getattr(rule_result, "reasons", []))
+            override_verdict = getattr(rule_result, "override_verdict", None)
+            rule_penalty = float(getattr(rule_result, "total_penalty", 0.0))
+
+        # Composite score calculation with rule penalties
+        composite_risk = float(np.clip(raw_risk + rule_penalty, 0.0, 1.0))
+
+        # Determine final status with rule overrides
+        if override_verdict == "REJECTED":
+            final_status = "REJECTED"
+            composite_risk = 1.0
+        elif override_verdict == "FLAGGED":
+            final_status = "FLAGGED" if model_status == "APPROVED" else model_status
+            composite_risk = max(composite_risk, 0.50)
+        else:
+            final_status = model_status
+
+        latency_ms = (time.perf_counter() - t0) * 1000.0
+
+        return {
+            "transaction_id": str(transaction.get("transaction_id", "")),
+            "user_id": str(transaction.get("user_id", "")),
+            "account_id": str(transaction.get("account_id", "")),
+            "amount": float(transaction.get("amount", 0.0)),
+            "currency": str(transaction.get("currency", "USD")),
+            "merchant_name": str(transaction.get("merchant_name", "Unknown")),
+            "merchant_category": str(transaction.get("merchant_category", "retail")),
+            "fraud_probability": round(fraud_prob, 4),
+            "anomaly_score": round(anomaly_score, 4),
+            "risk_score": round(composite_risk, 4),
+            "status": final_status,
+            "rule_violations": rule_violations,
+            "reasons": reasons,
+            "latency_ms": round(latency_ms, 3),
+            "features": {name: float(val) for name, val in zip(FEATURE_NAMES, feat_vec)},
         }
 
 

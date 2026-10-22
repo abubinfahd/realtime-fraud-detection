@@ -1,7 +1,7 @@
 """Unit tests for Stage 5: Redis Real-Time Velocity Feature Store and Lua scripts."""
 
-from datetime import UTC, datetime, timedelta
 import time
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import numpy as np

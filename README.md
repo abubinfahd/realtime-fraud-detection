@@ -107,6 +107,18 @@ real-time-fraud-detection/
 │   ├── anomalies.py                 # Multi-modal fraud attack generators (spikes, geo, ATO)
 │   └── config.py                    # Producer configuration and librdkafka options
 │
+├── consumers/                       # Real-time event consumer CLI scripts (Stage 6)
+│   └── fraud_consumer.py            # High-throughput async Kafka fraud consumer worker
+│
+├── rules/                           # Deterministic business & compliance rules (Stage 6)
+│   └── rule_engine.py               # Deterministic rule evaluator with Haversine distance
+│
+├── models/                          # In-memory ML inference wrappers (Stage 6)
+│   └── inference_engine.py          # Real-time CPU hybrid scoring wrapper
+│
+├── schemas/                         # Pydantic data contracts (Stage 6)
+│   └── transaction.py               # Inbound transaction event schema
+│
 ├── storage/                         # Real-time feature store interfaces (Stage 5)
 │   ├── redis_feature_store.py       # High-level async Redis feature store wrapper
 │   └── lua_scripts.py               # Pre-compiled atomic Redis sliding-window scripts
@@ -120,6 +132,9 @@ real-time-fraud-detection/
 │       ├── schemas/                 # Pydantic data contracts
 │       │   ├── transaction.py       # Inbound transaction event schema
 │       │   └── alert.py             # Outbound fraud alert schema
+│       │
+│       ├── rules/                   # Deterministic compliance & security rules (Stage 6)
+│       │   └── rule_engine.py       # Impossible travel, velocity bursts, sanctions, nocturnal ATO
 │       │
 │       ├── ml/                      # Modular machine learning pipeline
 │       │   ├── data_loader.py       # Synthetic data generator with multi-modal fraud
@@ -137,15 +152,18 @@ real-time-fraud-detection/
 │       ├── streaming/               # Kafka producers, consumers & Redis feature store (Stage 4+)
 │       │   ├── config.py            # Kafka producer tuning and librdkafka parameters
 │       │   ├── anomalies.py         # Synthetic attack injection generators
-│       │   └── producer.py          # Async transaction producer with Token Bucket limiter
+│       │   ├── producer.py          # Async transaction producer with Token Bucket limiter
+│       │   └── consumer.py          # Real-time Kafka consumer, rules, ML scoring & DLQ
 │       │
 │       └── api/                     # FastAPI ASGI gateway & WebSocket hub (Stage 9+)
 │
-├── tests/                           # Automated unit test suite (schemas, preprocessing, ML, producer, storage)
+├── tests/                           # Automated unit test suite (77 tests across all stages)
 │   ├── conftest.py                  # Pytest fixtures and mock objects
 │   ├── test_api.py                  # FastAPI health check and prediction endpoint tests
-│   ├── test_producer.py             # Kafka producer, Token Bucket limiter & anomaly tests
-│   ├── test_redis_feature_store.py  # Redis sliding windows, Lua scripts, eviction & TTL tests
+│   ├── test_consumer.py             # Real-time Kafka consumer, DLQ routing & alert tests (Stage 6)
+│   ├── test_rule_engine.py          # Deterministic rules, Haversine distance & sanctions tests (Stage 6)
+│   ├── test_producer.py             # Kafka producer, Token Bucket limiter & anomaly tests (Stage 4)
+│   ├── test_redis_feature_store.py  # Redis sliding windows, Lua scripts, eviction & TTL tests (Stage 5)
 │   ├── test_schemas.py              # Pydantic data contract validation tests
 │   ├── test_preprocessing.py        # Feature transformation, clipping & imputation tests
 │   ├── test_features.py             # Feature order and vector extraction tests
@@ -305,6 +323,18 @@ uv run python benchmarks/benchmark_redis.py --mock --num-ops 1000 --concurrency 
 # 3. Inspect active keys and verify 30-minute key TTL via redis-cli:
 docker compose exec redis redis-cli KEYS "user:*:tx_history"
 docker compose exec redis redis-cli TTL "user:<user_id>:tx_history"
+```
+
+### 6.11 Real-Time Kafka Fraud Consumer Worker (Stage 6)
+```bash
+# 1. Start continuous Kafka fraud consumer worker:
+uv run python consumers/fraud_consumer.py --auto-offset-reset latest
+
+# Or using the installed CLI entrypoint:
+uv run fraud-consumer --auto-offset-reset latest
+
+# 2. Run consumer in simulation / test mode (stops after 50 messages, or runs without live Kafka):
+uv run fraud-consumer --mock --max-messages 50
 ```
 
 

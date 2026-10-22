@@ -7,8 +7,8 @@ Generates realistic attack distributions:
 4. Nocturnal High-Risk Category (Offshore crypto/gambling in early morning hours)
 """
 
-from datetime import UTC, datetime, timedelta
 import random
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from fraud_detection.schemas.transaction import TransactionEvent

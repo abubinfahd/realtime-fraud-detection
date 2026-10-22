@@ -45,6 +45,7 @@ dev = [
 fraud-train = "fraud_detection.ml.train:main"
 fraud-infer = "fraud_detection.ml.inference:main"
 fraud-producer = "fraud_detection.streaming.producer:main"
+fraud-consumer = "fraud_detection.streaming.consumer:main"
 fraud-redis-benchmark = "fraud_detection.storage.benchmark:main"
 
 
@@ -62,6 +63,10 @@ target-version = "py312"
 [tool.ruff.lint.per-file-ignores]
 "main.py" = ["E402"]
 "producers/*" = ["E402"]
+"consumers/*" = ["E402"]
+"rules/*" = ["E402"]
+"models/*" = ["E402"]
+"schemas/*" = ["E402"]
 "storage/*" = ["E402"]
 "benchmarks/*" = ["E402"]
 

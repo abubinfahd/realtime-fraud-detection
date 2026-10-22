@@ -11,7 +11,7 @@ from fraud_detection.storage.redis_feature_store import (
 
 __all__ = [
     "GET_VELOCITY_READ_SCRIPT",
+    "SLIDING_WINDOW_INGEST_SCRIPT",
     "InMemorySortedSetStore",
     "RedisFeatureStore",
-    "SLIDING_WINDOW_INGEST_SCRIPT",
 ]
