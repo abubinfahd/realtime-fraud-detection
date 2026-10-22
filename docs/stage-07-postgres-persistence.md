@@ -115,7 +115,7 @@ When Stage 7 is triggered (`Start Step 7`):
 2. Implement `storage/postgres_pool.py` providing asynchronous connection lifecycle management.
 3. Implement `storage/transaction_repository.py` with multi-row batch insertion and error handling.
 4. Integrate the batch buffer into `consumers/fraud_consumer.py`.
-5. Update `README.md` and `docs/03-database.md`.
+5. Update `README.md` and `docs/stage-02-database.md`.
 
 ---
 

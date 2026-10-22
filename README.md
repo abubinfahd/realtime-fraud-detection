@@ -94,10 +94,10 @@ real-time-fraud-detection/
 │
 ├── docs/
 │   ├── 01-architecture.md           # System architecture, data flow, failure boundaries
-│   ├── 02-infrastructure.md           # Docker Compose, networking, volume topologies
-│   ├── 03-database.md                 # Relational schema, B-tree indexes & query analysis
-│   ├── 04-ml-pipeline.md             # Hybrid ML pipeline, PR-AUC & CPU benchmark
-│   └── stage-02 to stage-13...       # Specifications & execution guides for each stage
+│   ├── stage-01-infrastructure.md   # Docker Compose, networking, volume topologies (Stage 1)
+│   ├── stage-02-database.md         # Relational schema, B-tree indexes & query analysis (Stage 2)
+│   ├── stage-03-ml-pipeline.md      # Hybrid ML pipeline, PR-AUC & CPU benchmark (Stage 3)
+│   └── stage-04 to stage-13...      # Specifications & execution guides for each stage
 │
 ├── benchmarks/                      # Performance and SLA benchmarking suites (Stage 3, Stage 5)
 │   └── benchmark_redis.py           # Real-time Redis velocity feature store concurrency benchmark

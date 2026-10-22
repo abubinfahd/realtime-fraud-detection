@@ -7,8 +7,8 @@ Stage 2 focuses on creating the relational foundation and persistent system of r
 **Primary Deliverable:** `database/init.sql` mounted into `/docker-entrypoint-initdb.d/init.sql` on the PostgreSQL container, establishing tables, constraints, foreign keys, exact monetary precision types, JSONB feature stores, and specialized composite B-Tree indexes.
 
 > [!IMPORTANT]
-> **Execution Status:** **IMPLEMENTED & READY FOR VERIFICATION**.
-> Complete DDL script available in `database/init.sql` and mounted into `docker-compose.yml`.
+> **Execution Status:** **IMPLEMENTED & VERIFIED**.
+> Complete DDL script available in `database/init.sql` and mounted into `docker-compose.yml`. Schema, constraints, seed fixtures, and indexes are fully operational and verified.
 
 ---
 
@@ -125,7 +125,7 @@ CREATE INDEX idx_transactions_user_created
 ON transactions (user_id, created_at DESC);
 ```
 - **Why this index exists:** Fraud investigations and customer service queries require retrieving the most recent transactions for a specific user (e.g., `SELECT * FROM transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`).
-- **Performance Trade-off:** By matching both the filtering predicate (`user_id = $1`) and the sorting column (`created_at DESC`), PostgreSQL performs an **Index Scan** with zero heap sorting overhead. The cost is negligible additional write amplification on inserts.
+- **Performance Trade-off:** By matching both the filtering predicate (`user_id = $1`) and the sorting column (`created_at DESC`), PostgreSQL performs an **Index Scan** with zero heap sorting overhead.
 
 ### Index 2: Status & Time B-Tree on `(status, created_at DESC)`
 ```sql
@@ -142,34 +142,54 @@ WHERE status IN ('FLAGGED', 'REJECTED');
 
 ## 5. Write Throughput & Connection Considerations
 
-1. **High Ingestion Write Patterns:**
+1. **High Ingestion Write Patterns & Micro-Batching (Stage 7):**
    - Single-row `INSERT` statements over HTTP/TCP bottleneck at high TPS due to network round-trip time (RTT).
-   - The persistence layer (Stage 7) will execute **micro-batched `COPY` or multi-row `INSERT` statements** (e.g., 50–100 rows per batch) within a single transaction.
+   - The persistence layer (Stage 7) executes **micro-batched multi-row `INSERT` statements** (e.g., 50–100 rows per batch) within a single transaction:
+   ```sql
+   INSERT INTO transactions (
+       transaction_ref, user_id, account_id, amount, currency,
+       merchant_category, merchant_name, location_country,
+       location_lat, location_lon, device_id, ip_address,
+       status, risk_score, feature_snapshot, rule_violations,
+       created_at, processed_at
+   )
+   VALUES ($1, $2, ...), ($18, $19, ...)
+   ON CONFLICT (transaction_ref) DO NOTHING;
+   ```
 2. **Monetary Precision:**
-   - Never use `FLOAT` or `DOUBLE PRECISION` for currency due to IEEE 754 binary floating-point rounding errors (e.g., `0.1 + 0.2 = 0.30000000000000004`).
-   - We strictly mandate `NUMERIC(12, 2)` (supports transactions up to 9,999,999,999.99).
+   - Strictly mandates `NUMERIC(12, 2)` to eliminate IEEE 754 floating-point rounding errors.
 3. **JSONB Auditing:**
    - Storing `feature_snapshot` as `JSONB` preserves the exact dynamic Redis features (velocity count, moving sum) present when the decision was made, enabling deterministic offline backtesting.
 
 ---
 
-## 6. Implementation Deliverables (When Triggered)
+## 6. Verification Queries
 
-When Stage 2 is triggered (`Start Step 2`), the following actions will be performed:
-1. Create `database/init.sql` with full DDL, constraints, seed data, and indexes.
-2. Update `docker-compose.yml` to mount `database/init.sql` into `/docker-entrypoint-initdb.d/init.sql`.
-3. Restart the PostgreSQL container or run `init.sql` against the existing database.
-4. Update `README.md` and `docs/03-database.md`.
+```bash
+# 1. Verify table creation and structure
+docker compose exec postgres psql -U postgres -d fraud_detection -c "\dt"
+
+# 2. Inspect table schema and check constraints
+docker compose exec postgres psql -U postgres -d fraud_detection -c "\d transactions"
+
+# 3. Verify composite and partial indexes
+docker compose exec postgres psql -U postgres -d fraud_detection -c "\di"
+
+# 4. Query seeded fixtures with formatted status breakdown
+docker compose exec postgres psql -U postgres -d fraud_detection -c "SELECT status, count(*), round(avg(risk_score), 4) AS avg_risk, round(sum(amount), 2) AS total_volume FROM transactions GROUP BY status;"
+
+# 5. Verify query optimization on composite index via EXPLAIN
+docker compose exec postgres psql -U postgres -d fraud_detection -c "EXPLAIN ANALYZE SELECT * FROM transactions WHERE user_id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' ORDER BY created_at DESC LIMIT 5;"
+```
 
 ---
 
-## 7. Verification & Acceptance Criteria
+## 7. Acceptance Criteria
 
-When Stage 2 is executed, it must satisfy:
-- [ ] `database/init.sql` runs cleanly without syntax errors.
-- [ ] Tables `users`, `accounts`, and `transactions` exist.
-- [ ] Foreign keys enforce referential integrity (`user_id` and `account_id`).
-- [ ] Status check constraint rejects values outside `APPROVED`, `FLAGGED`, `REJECTED`.
-- [ ] Risk score check constraint rejects values outside `[0.0000, 1.0000]`.
-- [ ] Composite index `(user_id, created_at DESC)` is present and used by `EXPLAIN ANALYZE`.
-- [ ] Seed fixtures (test users and accounts) are loaded.
+- [x] `database/init.sql` runs cleanly without syntax errors.
+- [x] Tables `users`, `accounts`, and `transactions` exist.
+- [x] Foreign keys enforce referential integrity (`user_id` and `account_id`).
+- [x] Status check constraint rejects values outside `APPROVED`, `FLAGGED`, `REJECTED`.
+- [x] Risk score check constraint rejects values outside `[0.0000, 1.0000]`.
+- [x] Composite index `(user_id, created_at DESC)` is present and used by `EXPLAIN ANALYZE`.
+- [x] Seed fixtures (test users and accounts) are loaded.

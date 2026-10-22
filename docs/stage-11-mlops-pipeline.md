@@ -123,7 +123,7 @@ When Stage 11 is triggered (`Start Step 11`):
 3. Implement `mlops/registry.py` to automate version registration and transition gates.
 4. Implement `mlops/drift_detector.py` providing PSI and KS-test calculation modules.
 5. Create `docker-compose.mlops.yml` allowing local spin-up of an MLflow Tracking Server with UI at `http://localhost:5000`.
-6. Update `README.md` and `docs/04-ml-pipeline.md`.
+6. Update `README.md` and `docs/stage-03-ml-pipeline.md`.
 
 ---
 
