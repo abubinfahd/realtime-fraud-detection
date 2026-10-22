@@ -90,3 +90,7 @@ data/*
 !data/raw/
 !data/raw/transactions_10k.csv
 !data/raw/demo_inference_10.csv
+
+# Generated documentation guides
+docs/Real_Time_Fraud_Detection_Bengali_Guide.docx
+docs/Real_Time_Fraud_Detection_Bengali_Guide.md

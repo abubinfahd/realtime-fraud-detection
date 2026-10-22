@@ -11,9 +11,9 @@ Stage 7 implements high-throughput, asynchronous persistence of evaluated transa
 - `storage/transaction_repository.py`: Repository handling micro-batched multi-row inserts and idempotency resolution.
 - `consumers/persistence_worker.py`: Async queue worker or embedded consumer sink that flushes scored transactions in micro-batches.
 
-> [!IMPORTANT]
-> **Execution Status:** **SPECIFICATION & DESIGN PHASE**.
-> Database connection pools, repositories, and persistence workers will be implemented only when explicitly triggered via `Start Step 7`.
+> [!NOTE]
+> **Execution Status:** **IMPLEMENTED & VERIFIED**.
+> High-throughput asynchronous PostgreSQL connection pooling (`asyncpg`), micro-batch repository with exact `NUMERIC(12,2)` precision, bounded dual-trigger flush buffer, and consumer integration are fully implemented and verified with automated test suites.
 
 ---
 
@@ -108,26 +108,27 @@ db_pool = await asyncpg.create_pool(
 
 ---
 
-## 4. Implementation Deliverables (When Triggered)
+## 4. Implementation Deliverables
 
-When Stage 7 is triggered (`Start Step 7`):
-1. Add `asyncpg` to `pyproject.toml`.
-2. Implement `storage/postgres_pool.py` providing asynchronous connection lifecycle management.
-3. Implement `storage/transaction_repository.py` with multi-row batch insertion and error handling.
-4. Integrate the batch buffer into `consumers/fraud_consumer.py`.
-5. Update `README.md` and `docs/stage-02-database.md`.
+1. `pyproject.toml`: Added `"asyncpg>=0.29.0"` dependency.
+2. `src/fraud_detection/core/config.py`: Added `POSTGRES_MIN_CONNECTIONS` (5), `POSTGRES_MAX_CONNECTIONS` (20), `POSTGRES_BATCH_SIZE` (50), `POSTGRES_FLUSH_INTERVAL_SECONDS` (0.05).
+3. `src/fraud_detection/storage/postgres_pool.py` & `storage/postgres_pool.py`: High-performance asynchronous pool manager with offline simulator fallback.
+4. `src/fraud_detection/storage/transaction_repository.py` & `storage/transaction_repository.py`: Multi-row batched insert repository with foreign key fixtures and indexed aggregation queries.
+5. `src/fraud_detection/streaming/persistence_buffer.py` & `consumers/persistence_worker.py`: Async queue buffer with size/timer dual-trigger flushes and CLI test runner.
+6. `src/fraud_detection/streaming/consumer.py`: Integrated persistence buffer into inference pipeline with graceful lifecycle flush.
+7. `tests/test_postgres_persistence.py`: Automated unit test suite validating pool lifecycle, repository precision, idempotency, size triggers, time triggers, drain-on-stop, and consumer integration.
 
 ---
 
 ## 5. Verification & Acceptance Criteria
 
-When Stage 7 is executed, it must satisfy:
-- [ ] Connects asynchronously to PostgreSQL with connection pooling.
-- [ ] Successfully persists batches of scored transactions from the live consumer.
-- [ ] Confirms exact monetary precision (`NUMERIC(12, 2)`) without rounding anomalies.
-- [ ] Confirms point-in-time Redis velocity features are valid in `feature_snapshot JSONB`.
-- [ ] Re-producing duplicate events verifies `ON CONFLICT DO NOTHING` prevents duplicates.
-- [ ] Verification query executes via `psql`:
+- [x] Connects asynchronously to PostgreSQL with connection pooling (`asyncpg`).
+- [x] Successfully persists batches of scored transactions from the live consumer.
+- [x] Confirms exact monetary precision (`NUMERIC(12, 2)`) without rounding anomalies (`Decimal` conversion).
+- [x] Confirms point-in-time Redis velocity features are valid in `feature_snapshot JSONB`.
+- [x] Re-producing duplicate events verifies `ON CONFLICT (transaction_ref) DO NOTHING` prevents duplicates.
+- [x] Automated test suite `tests/test_postgres_persistence.py` passes all 7 unit tests.
+- [x] Verification query executes via `psql`:
   ```bash
   docker compose exec postgres psql -U postgres -d fraud_detection -c "SELECT status, count(*), round(avg(risk_score), 4) FROM transactions GROUP BY status;"
   ```

@@ -30,7 +30,10 @@ from fraud_detection.ml.inference import InferenceEngine
 from fraud_detection.rules.rule_engine import RuleEngine
 from fraud_detection.schemas.alert import AlertSignals, FraudAlert, VelocityContext
 from fraud_detection.schemas.transaction import TransactionEvent
+from fraud_detection.storage.postgres_pool import PostgresPool
 from fraud_detection.storage.redis_feature_store import RedisFeatureStore
+from fraud_detection.storage.transaction_repository import TransactionRepository
+from fraud_detection.streaming.persistence_buffer import PersistenceBuffer
 
 logger = get_logger("fraud_detection.streaming.consumer")
 
@@ -49,6 +52,8 @@ class FraudConsumer:
         inference_engine: InferenceEngine | None = None,
         rule_engine: RuleEngine | None = None,
         redis_store: RedisFeatureStore | None = None,
+        persistence_buffer: PersistenceBuffer | None = None,
+        enable_persistence: bool = True,
         on_decision: Callable[[dict[str, Any]], Any] | None = None,
     ) -> None:
         self.bootstrap_servers = bootstrap_servers or settings.KAFKA_BOOTSTRAP_SERVERS
@@ -64,8 +69,25 @@ class FraudConsumer:
         self.redis_store = redis_store or RedisFeatureStore(mock_mode=mock_mode)
         self.on_decision = on_decision
 
+        # Stage 7 PostgreSQL Persistence Sink & Micro-Batch Buffer
+        self.enable_persistence = enable_persistence
+        if enable_persistence:
+            if persistence_buffer is not None:
+                self.persistence_buffer = persistence_buffer
+                self.transaction_repo = persistence_buffer.repository
+                self.postgres_pool = persistence_buffer.repository.pool
+            else:
+                self.postgres_pool = PostgresPool(mock_mode=mock_mode)
+                self.transaction_repo = TransactionRepository(self.postgres_pool)
+                self.persistence_buffer = PersistenceBuffer(repository=self.transaction_repo)
+        else:
+            self.persistence_buffer = None
+            self.transaction_repo = None
+            self.postgres_pool = None
+
         # Lifecycle state
         self.running = False
+        self._is_stopped = False
         self._consumer: Any = None
         self._dlq_producer: Any = None
 
@@ -274,11 +296,27 @@ class FraudConsumer:
         total_latency_ms = (time.perf_counter() - t_start) * 1000.0
         decision["total_latency_ms"] = round(total_latency_ms, 3)
 
+        # Enrich decision with raw transaction context for audit logging
+        decision["timestamp"] = (
+            tx_event.timestamp.isoformat()
+            if hasattr(tx_event.timestamp, "isoformat")
+            else str(tx_event.timestamp)
+        )
+        decision["location_lat"] = tx_event.location_lat
+        decision["location_lon"] = tx_event.location_lon
+        decision["location_country"] = tx_event.location_country
+        decision["device_id"] = tx_event.device_id
+        decision["ip_address"] = tx_event.ip_address
+
         # 5. Alert Broadcasting for High-Risk Events
         if decision["status"] in ("FLAGGED", "REJECTED"):
             await self._publish_alert_pubsub(decision, velocity)
 
-        # 6. Execute Registered Callback (e.g. for Stage 7 DB batch buffer)
+        # 6. Micro-Batched PostgreSQL Persistence
+        if self.persistence_buffer is not None:
+            await self.persistence_buffer.add(decision)
+
+        # 7. Execute Registered Callback (e.g. for custom downstream consumers)
         if self.on_decision:
             try:
                 res = self.on_decision(decision)
@@ -308,6 +346,11 @@ class FraudConsumer:
         self.running = True
         self._init_kafka_consumer()
         await self.redis_store.initialize()
+
+        if self.persistence_buffer is not None:
+            if hasattr(self.postgres_pool, "initialize"):
+                await self.postgres_pool.initialize()
+            await self.persistence_buffer.start()
 
         logger.info(
             "FraudConsumer worker started",
@@ -419,10 +462,10 @@ class FraudConsumer:
             await self.stop()
 
     async def stop(self) -> None:
-        """Gracefully release Kafka consumer, flush DLQ producer, and close Redis."""
-        if not self.running and self._consumer is None:
+        """Gracefully release Kafka consumer, flush persistence buffer, and close stores."""
+        if self._is_stopped:
             return
-
+        self._is_stopped = True
         self.running = False
         print("\n[*] Gracefully stopping FraudConsumer worker...")
 
@@ -449,6 +492,17 @@ class FraudConsumer:
         # Close Redis connection pool
         await self.redis_store.close()
 
+        # Stop persistence buffer and drain remaining records to PostgreSQL
+        total_persisted = 0
+        total_batches = 0
+        if self.persistence_buffer is not None:
+            await self.persistence_buffer.stop()
+            total_persisted = self.persistence_buffer.total_flushed
+            total_batches = self.persistence_buffer.batches_count
+
+        if self.postgres_pool is not None:
+            await self.postgres_pool.close()
+
         print("=" * 80)
         print("FraudConsumer Execution Summary")
         print("=" * 80)
@@ -457,6 +511,10 @@ class FraudConsumer:
         print(f"  - FLAGGED:                  {self.flagged_count:,}")
         print(f"  - REJECTED:                 {self.rejected_count:,}")
         print(f"  - DLQ (Corrupt):            {self.dlq_count:,}")
+        if self.enable_persistence:
+            print(
+                f"  - PERSISTED (PostgreSQL):   {total_persisted:,} rows in {total_batches:,} batches"
+            )
         if self.latencies_ms:
             import numpy as np
 
@@ -506,6 +564,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Run in mock mode without live Kafka broker",
     )
+    parser.add_argument(
+        "--disable-persistence",
+        action="store_true",
+        help="Disable PostgreSQL micro-batch persistence sink",
+    )
     return parser.parse_args()
 
 
@@ -519,6 +582,7 @@ def main() -> None:
         consumer_group=args.group_id,
         auto_offset_reset=args.auto_offset_reset,
         mock_mode=args.mock,
+        enable_persistence=not args.disable_persistence,
     )
 
     loop = asyncio.new_event_loop()

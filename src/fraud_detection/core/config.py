@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "fraud_detection"
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
+    POSTGRES_MIN_CONNECTIONS: int = 5
+    POSTGRES_MAX_CONNECTIONS: int = 20
+    POSTGRES_BATCH_SIZE: int = 50
+    POSTGRES_FLUSH_INTERVAL_SECONDS: float = 0.05
 
     @property
     def postgres_dsn(self) -> str:

@@ -337,6 +337,27 @@ uv run fraud-consumer --auto-offset-reset latest
 uv run fraud-consumer --mock --max-messages 50
 ```
 
+### 6.12 PostgreSQL Persistence Buffer & Repository (Stage 7)
+```bash
+# 1. Sync virtual environment with asyncpg:
+uv sync
+
+# 2. Run standalone micro-batch persistence worker demo (persists 100 transactions):
+uv run python consumers/persistence_worker.py --count 100
+
+# In offline simulation mode:
+uv run python consumers/persistence_worker.py --count 100 --mock
+
+# 3. Run consumer worker with live PostgreSQL micro-batch persistence enabled:
+uv run fraud-consumer --mock --max-messages 50
+
+# 4. Run automated persistence unit test suite:
+uv run pytest tests/test_postgres_persistence.py -v
+
+# 5. Verify persisted transactions and aggregate metrics directly in PostgreSQL:
+docker compose exec postgres psql -U postgres -d fraud_detection -c "SELECT status, count(*), round(avg(risk_score), 4) as avg_risk, round(sum(amount), 2) as volume FROM transactions GROUP BY status;"
+```
+
 
 
 ---
