@@ -8,10 +8,12 @@ CORS middleware, WebSocket routing, and real-time fraud prediction API endpoints
 import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from fraud_detection.api.routes import alerts, health, metrics, ws
@@ -153,6 +155,13 @@ def create_app() -> FastAPI:
     app.include_router(metrics.router)
     app.include_router(alerts.router)
 
+    # Mount live operations dashboard frontend
+    dashboard_dir = Path(__file__).resolve().parent.parent.parent.parent / "dashboard"
+    if dashboard_dir.is_dir():
+        app.mount(
+            "/dashboard", StaticFiles(directory=str(dashboard_dir), html=True), name="dashboard"
+        )
+
     @app.get("/", tags=["General"])
     async def root() -> dict[str, Any]:
         """Root endpoint returning service identity and documentation links."""
@@ -161,6 +170,7 @@ def create_app() -> FastAPI:
             "version": "0.1.0",
             "status": "operational",
             "environment": settings.ENVIRONMENT,
+            "dashboard": "/dashboard/",
             "docs": "/docs",
             "health": "/healthz",
             "websocket_stream": "/ws/live-stream",

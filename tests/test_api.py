@@ -15,6 +15,7 @@ class TestAPIEndpoints:
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "operational"
+        assert "dashboard" in data
         assert "docs" in data
         assert "version" in data
         assert "websocket_stream" in data
@@ -95,3 +96,18 @@ class TestAPIEndpoints:
         assert 0.0 <= data["fraud_probability"] <= 1.0
         assert 0.0 <= data["anomaly_score"] <= 1.0
         assert data["latency_ms"] > 0.0
+
+    def test_dashboard_mount(self, client: TestClient) -> None:
+        """Verify dashboard HTML is served at /dashboard/."""
+        resp = client.get("/dashboard/")
+        assert resp.status_code == 200
+        assert "FraudShield AI" in resp.text
+        assert "Real-Time Threat Intelligence Feed" in resp.text
+        assert "app.js" in resp.text
+
+    def test_dashboard_static_assets(self, client: TestClient) -> None:
+        """Verify dashboard client JavaScript asset is served at /dashboard/app.js."""
+        resp = client.get("/dashboard/app.js")
+        assert resp.status_code == 200
+        assert "WebSocket" in resp.text
+        assert "playAlertChime" in resp.text
