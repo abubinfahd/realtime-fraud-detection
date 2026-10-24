@@ -65,14 +65,6 @@ target-version = "py312"
 
 [tool.ruff.lint.per-file-ignores]
 "main.py" = ["E402"]
-"producers/*" = ["E402"]
-"consumers/*" = ["E402"]
-"rules/*" = ["E402"]
-"models/*" = ["E402"]
-"schemas/*" = ["E402"]
-"storage/*" = ["E402"]
-"benchmarks/*" = ["E402"]
-"api/*" = ["E402"]
 "scripts/*" = ["E402"]
 
 
