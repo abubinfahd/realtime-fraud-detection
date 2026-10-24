@@ -71,6 +71,7 @@ target-version = "py312"
 "schemas/*" = ["E402"]
 "storage/*" = ["E402"]
 "benchmarks/*" = ["E402"]
+"api/*" = ["E402"]
 
 
 
