@@ -290,7 +290,9 @@ class TransactionProducer:
                         account_id=victim["account_id"],
                     )
                     for anom_event in anomaly_events:
-                        if self.stop_requested:
+                        if self.stop_requested or (
+                            self.config.max_events and self.total_sent >= self.config.max_events
+                        ):
                             break
                         self.produce_event(anom_event)
                 else:

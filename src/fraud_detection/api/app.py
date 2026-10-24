@@ -52,7 +52,7 @@ async def _redis_pubsub_bridge(app: FastAPI, redis_publisher: RedisPublisher) ->
     Consumes threat alerts from channel:fraud-alerts and fans out JSON frames
     to all registered WebSocket clients concurrently via ConnectionManager.
     """
-    channel = settings.REDIS_ALERT_CHANNEL
+    channel = settings.REDIS_ALERTS_CHANNEL
     logger.info("Starting Redis Pub/Sub WebSocket broadcast bridge", extra={"channel": channel})
     try:
         async for raw_message in redis_publisher.subscribe(channel):

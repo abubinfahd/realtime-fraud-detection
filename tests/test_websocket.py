@@ -112,3 +112,33 @@ class TestConnectionManager:
         assert metrics["total_frames_delivered"] == 1
         assert metrics["uptime_seconds"] >= 0.0
         assert "timestamp" in metrics
+
+
+class TestWebSocketEndpoint:
+    """Integration test suite for the FastAPI WebSocket live alert stream endpoint."""
+
+    def test_websocket_connection_and_heartbeat(self, client) -> None:
+        """Verify client connection, welcome handshake, and ping/pong heartbeats."""
+        import json
+
+        with client.websocket_connect("/ws/live-stream") as ws:
+            # 1. Verify initial welcome handshake frame
+            welcome_data = ws.receive_json()
+            assert welcome_data["event_type"] == "CONNECTION_ESTABLISHED"
+            assert welcome_data["service"] == "fraud-detection-stream"
+            assert welcome_data["active_clients"] >= 1
+
+            # 2. Plain text ping
+            ws.send_text("ping")
+            reply = ws.receive_text()
+            assert reply == "pong"
+
+            # 3. JSON structured ping
+            ws.send_text(json.dumps({"action": "ping"}))
+            pong_json = ws.receive_json()
+            assert pong_json["event_type"] == "PONG"
+
+            # 4. JSON stats request
+            ws.send_text(json.dumps({"action": "get_stats"}))
+            stats_json = ws.receive_json()
+            assert "active_clients" in stats_json

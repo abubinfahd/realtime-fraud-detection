@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     REDIS_SOCKET_TIMEOUT: float = 2.0
     REDIS_FEATURE_TTL_SECONDS: int = 1800
     REDIS_ALERTS_CHANNEL: str = "channel:fraud-alerts"
+    REDIS_ALERT_CHANNEL: str = "channel:fraud-alerts"
 
     @property
     def redis_url(self) -> str:

@@ -74,7 +74,7 @@ async def health_check_endpoint(request: Request) -> JSONResponse:
         components["redis_pubsub"] = ComponentHealth(
             status="up",
             latency_ms=round((time.perf_counter() - t0) * 1000, 3),
-            details={"mock_mode": mock_mode, "channel": settings.REDIS_ALERT_CHANNEL},
+            details={"mock_mode": mock_mode, "channel": settings.REDIS_ALERTS_CHANNEL},
         )
     else:
         components["redis_pubsub"] = ComponentHealth(
