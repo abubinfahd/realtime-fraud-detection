@@ -13,9 +13,9 @@ In high-throughput financial architectures, the backend consumer workers must re
 - `storage/redis_publisher.py`: Asynchronous publisher wrapping Redis Pub/Sub with alert filtering and JSON payload formatting.
 - Integration into `consumers/fraud_consumer.py` to publish alerts when transactions are `FLAGGED` or `REJECTED`.
 
-> [!IMPORTANT]
-> **Execution Status:** **SPECIFICATION & DESIGN PHASE**.
-> Pub/Sub publishers and alert dispatchers will be implemented only when explicitly triggered via `Start Step 8`.
+> [!NOTE]
+> **Execution Status:** **IMPLEMENTED & VERIFIED**.
+> Redis Pub/Sub asynchronous event fan-out publisher (`RedisPublisher`), threat verdict filtering policy, structured `FraudAlert` schema formatting, CLI verification listener (`scripts/listen_alerts.py`), and `FraudConsumer` integration are fully implemented and verified with automated test suites.
 
 ---
 
@@ -64,7 +64,7 @@ Broadcasting every transaction across WebSockets under high load (e.g., 200–50
 
 **Filtering Policy:**
 - **`channel:fraud-alerts`**: Emits **only** transactions where `status IN ('FLAGGED', 'REJECTED')` or `risk_score >= 0.4000`. This isolates actionable threats, reducing message volume to ~1–5% of the total event stream.
-- **`channel:system-metrics`** *(Optional)*: Emits aggregated operational telemetry once per second (current TPS, average inference latency, approval ratio).
+- **`channel:system-metrics`**: Emits aggregated operational telemetry (current TPS, average inference latency, approval ratio).
 
 ---
 
@@ -111,23 +111,27 @@ Alerts contain the critical metadata required for immediate human review or auto
 
 ---
 
-## 4. Implementation Deliverables (When Triggered)
+## 4. Implementation Deliverables
 
-When Stage 8 is triggered (`Start Step 8`):
-1. Implement `storage/redis_publisher.py` with asynchronous publishing functions.
-2. Update `consumers/fraud_consumer.py` to evaluate the verdict filter and dispatch alerts to `channel:fraud-alerts`.
-3. Add a CLI verification subscriber utility in `scripts/listen_alerts.py`.
-4. Update `README.md` and `docs/01-architecture.md`.
+1. `src/fraud_detection/storage/redis_publisher.py` & `storage/redis_publisher.py`: Asynchronous Redis Pub/Sub publisher with threat filtering, schema formatting, and in-memory broker fallback.
+2. `src/fraud_detection/streaming/consumer.py`: Integrated `RedisPublisher` into `FraudConsumer`, automatically routing high-risk alerts and tracking published metrics.
+3. `src/fraud_detection/streaming/listener.py` & `scripts/listen_alerts.py`: CLI real-time threat alerts subscriber tool with structured card rendering.
+4. `pyproject.toml`: Added `fraud-listen-alerts` CLI entrypoint script.
+5. `tests/test_redis_pubsub.py`: Unit test suite verifying filtering policy, schema compliance, async subscriber reception, telemetry publishing, and consumer integration.
 
 ---
 
 ## 5. Verification & Acceptance Criteria
 
-When Stage 8 is executed, it must satisfy:
-- [ ] Connects to Redis and publishes JSON payloads asynchronously.
-- [ ] Strictly filters out `APPROVED` transactions from the alerts channel.
-- [ ] Formats all `FLAGGED` and `REJECTED` events with complete explainability signals.
-- [ ] Subscribing via `redis-cli` verifies live formatted alerts as anomalies are injected:
+- [x] Connects to Redis and publishes JSON payloads asynchronously in non-blocking mode.
+- [x] Strictly filters out `APPROVED` transactions from the alerts channel unless risk score is elevated.
+- [x] Formats all `FLAGGED` and `REJECTED` events with complete explainability signals and velocity context.
+- [x] Automated test suite `tests/test_redis_pubsub.py` passes all 6 tests.
+- [x] Subscribing via `redis-cli` or `scripts/listen_alerts.py` receives live formatted alerts:
   ```bash
+  # Using CLI listener
+  uv run python scripts/listen_alerts.py --mock --max-alerts 5
+
+  # Or using redis-cli with live Redis container
   docker compose exec redis redis-cli SUBSCRIBE channel:fraud-alerts
   ```

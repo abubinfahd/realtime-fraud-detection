@@ -20,7 +20,6 @@ import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
-from uuid import UUID
 
 from pydantic import ValidationError
 
@@ -28,10 +27,10 @@ from fraud_detection.core.config import settings
 from fraud_detection.core.logger import get_logger
 from fraud_detection.ml.inference import InferenceEngine
 from fraud_detection.rules.rule_engine import RuleEngine
-from fraud_detection.schemas.alert import AlertSignals, FraudAlert, VelocityContext
 from fraud_detection.schemas.transaction import TransactionEvent
 from fraud_detection.storage.postgres_pool import PostgresPool
 from fraud_detection.storage.redis_feature_store import RedisFeatureStore
+from fraud_detection.storage.redis_publisher import RedisPublisher
 from fraud_detection.storage.transaction_repository import TransactionRepository
 from fraud_detection.streaming.persistence_buffer import PersistenceBuffer
 
@@ -52,6 +51,7 @@ class FraudConsumer:
         inference_engine: InferenceEngine | None = None,
         rule_engine: RuleEngine | None = None,
         redis_store: RedisFeatureStore | None = None,
+        redis_publisher: RedisPublisher | None = None,
         persistence_buffer: PersistenceBuffer | None = None,
         enable_persistence: bool = True,
         on_decision: Callable[[dict[str, Any]], Any] | None = None,
@@ -67,6 +67,10 @@ class FraudConsumer:
         self.inference_engine = inference_engine or InferenceEngine()
         self.rule_engine = rule_engine or RuleEngine()
         self.redis_store = redis_store or RedisFeatureStore(mock_mode=mock_mode)
+        self.redis_publisher = redis_publisher or RedisPublisher(
+            alerts_channel=settings.REDIS_ALERTS_CHANNEL,
+            mock_mode=mock_mode,
+        )
         self.on_decision = on_decision
 
         # Stage 7 PostgreSQL Persistence Sink & Micro-Batch Buffer
@@ -185,46 +189,9 @@ class FraudConsumer:
         velocity: dict[str, Any],
     ) -> None:
         """Publish high-risk fraud alerts (FLAGGED or REJECTED) to Redis Pub/Sub."""
-        try:
-            user_uuid = (
-                UUID(decision["user_id"])
-                if isinstance(decision["user_id"], str)
-                else decision["user_id"]
-            )
-            alert = FraudAlert(
-                event_type="FRAUD_ALERT",
-                transaction_id=decision["transaction_id"],
-                user_id=user_uuid,
-                amount=decision["amount"],
-                currency=decision.get("currency", "USD"),
-                status=decision["status"],
-                risk_score=decision["risk_score"],
-                merchant_name=decision["merchant_name"],
-                merchant_category=decision["merchant_category"],
-                signals=AlertSignals(
-                    lgbm_fraud_prob=decision["fraud_probability"],
-                    anomaly_score=decision["anomaly_score"],
-                    rule_violations=decision["rule_violations"],
-                ),
-                velocity_context=VelocityContext(
-                    tx_count_1m=int(velocity.get("tx_count_1m", 1)),
-                    tx_count_10m=int(velocity.get("tx_count_10m", 1)),
-                    tx_sum_10m=float(velocity.get("tx_sum_10m", decision["amount"])),
-                    amount_to_avg_ratio=float(velocity.get("amount_to_avg_ratio", 1.0)),
-                ),
-                inference_latency_ms=decision["latency_ms"],
-            )
-
-            alert_dict = alert.model_dump(mode="json")
-            self.published_alerts.append(alert_dict)
-
-            if self.redis_store._client is not None and not self.redis_store.mock_mode:
-                await self.redis_store._client.publish(
-                    settings.REDIS_ALERTS_CHANNEL,
-                    json.dumps(alert_dict),
-                )
-        except Exception as exc:
-            logger.warning("Error broadcasting alert to Redis Pub/Sub", extra={"error": str(exc)})
+        published = await self.redis_publisher.publish_alert(decision, velocity)
+        if published:
+            self.published_alerts = self.redis_publisher.published_alerts
 
     async def process_raw_message(
         self,
@@ -346,6 +313,7 @@ class FraudConsumer:
         self.running = True
         self._init_kafka_consumer()
         await self.redis_store.initialize()
+        await self.redis_publisher.initialize()
 
         if self.persistence_buffer is not None:
             if hasattr(self.postgres_pool, "initialize"):
@@ -489,8 +457,9 @@ class FraudConsumer:
                 pass
             self._dlq_producer = None
 
-        # Close Redis connection pool
+        # Close Redis connection pool and publisher
         await self.redis_store.close()
+        await self.redis_publisher.close()
 
         # Stop persistence buffer and drain remaining records to PostgreSQL
         total_persisted = 0
@@ -511,6 +480,7 @@ class FraudConsumer:
         print(f"  - FLAGGED:                  {self.flagged_count:,}")
         print(f"  - REJECTED:                 {self.rejected_count:,}")
         print(f"  - DLQ (Corrupt):            {self.dlq_count:,}")
+        print(f"  - ALERTS BROADCAST (Pub/Sub): {len(self.redis_publisher.published_alerts):,}")
         if self.enable_persistence:
             print(
                 f"  - PERSISTED (PostgreSQL):   {total_persisted:,} rows in {total_batches:,} batches"

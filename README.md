@@ -358,6 +358,21 @@ uv run pytest tests/test_postgres_persistence.py -v
 docker compose exec postgres psql -U postgres -d fraud_detection -c "SELECT status, count(*), round(avg(risk_score), 4) as avg_risk, round(sum(amount), 2) as volume FROM transactions GROUP BY status;"
 ```
 
+### 6.13 Redis Pub/Sub Threat Alert Broadcasting (Stage 8)
+```bash
+# 1. Listen for real-time fraud alerts via CLI subscriber:
+uv run python scripts/listen_alerts.py --mock --max-alerts 10
+
+# Or via installed entrypoint:
+uv run fraud-listen-alerts --mock --max-alerts 10
+
+# 2. In live Docker mode, subscribe directly via redis-cli:
+docker compose exec redis redis-cli SUBSCRIBE channel:fraud-alerts
+
+# 3. Run automated Redis Pub/Sub unit test suite:
+uv run pytest tests/test_redis_pubsub.py -v
+```
+
 
 
 ---

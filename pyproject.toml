@@ -48,6 +48,7 @@ fraud-infer = "fraud_detection.ml.inference:main"
 fraud-producer = "fraud_detection.streaming.producer:main"
 fraud-consumer = "fraud_detection.streaming.consumer:main"
 fraud-redis-benchmark = "fraud_detection.storage.benchmark:main"
+fraud-listen-alerts = "fraud_detection.streaming.listener:main"
 
 
 [build-system]
