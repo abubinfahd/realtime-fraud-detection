@@ -199,6 +199,24 @@ class TransactionRepository:
             return dict(rows[0])
         return None
 
+    async def get_recent_threats(self, limit: int = 20) -> list[dict[str, Any]]:
+        """Retrieve most recent FLAGGED and REJECTED transactions for dashboard hydration."""
+        if self.pool.mock_mode or self.pool._pool is None:
+            threats = [
+                r for r in self._mock_records.values() if r.get("status") in ("FLAGGED", "REJECTED")
+            ]
+            threats.sort(key=lambda x: x["created_at"], reverse=True)
+            return threats[:limit]
+
+        query = """
+        SELECT * FROM transactions
+        WHERE status IN ('FLAGGED', 'REJECTED')
+        ORDER BY created_at DESC
+        LIMIT $1;
+        """
+        rows = await self.pool.fetch(query, limit)
+        return [dict(r) for r in rows]
+
     async def get_user_recent_transactions(
         self,
         user_id: UUID | str,
