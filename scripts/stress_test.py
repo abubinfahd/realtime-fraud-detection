@@ -415,6 +415,12 @@ async def async_main() -> int:
         help="Total transactions to process (default: 500)",
     )
     parser.add_argument(
+        "--duration",
+        type=float,
+        default=None,
+        help="Benchmark duration in seconds (calculates total-events as tps * duration)",
+    )
+    parser.add_argument(
         "--concurrency",
         type=int,
         default=10,
@@ -440,9 +446,13 @@ async def async_main() -> int:
     )
     args = parser.parse_args()
 
+    total_events = args.total_events
+    if args.duration is not None and args.duration > 0:
+        total_events = max(1, int(args.tps * args.duration))
+
     harness = StressTestHarness(
         tps=args.tps,
-        total_events=args.total_events,
+        total_events=total_events,
         concurrency=args.concurrency,
         anomaly_rate=args.anomaly_rate,
         mock_mode=args.mock,
