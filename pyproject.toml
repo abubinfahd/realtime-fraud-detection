@@ -49,6 +49,7 @@ fraud-producer = "fraud_detection.streaming.producer:main"
 fraud-consumer = "fraud_detection.streaming.consumer:main"
 fraud-redis-benchmark = "fraud_detection.storage.benchmark:main"
 fraud-listen-alerts = "fraud_detection.streaming.listener:main"
+fraud-gateway = "fraud_detection.api.app:main"
 
 
 [build-system]
@@ -72,6 +73,7 @@ target-version = "py312"
 "storage/*" = ["E402"]
 "benchmarks/*" = ["E402"]
 "api/*" = ["E402"]
+"scripts/*" = ["E402"]
 
 
 

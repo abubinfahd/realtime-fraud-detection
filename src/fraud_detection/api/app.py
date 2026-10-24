@@ -210,3 +210,30 @@ def create_app() -> FastAPI:
         )
 
     return app
+
+
+def main() -> None:
+    """CLI launcher for the FastAPI streaming gateway server."""
+    import argparse
+    import uvicorn
+
+    parser = argparse.ArgumentParser(description="Real-Time Fraud Detection Gateway")
+    parser.add_argument("--host", default="0.0.0.0", help="Binding host address (default: 0.0.0.0)")
+    parser.add_argument("--port", type=int, default=8000, help="Listening port (default: 8000)")
+    parser.add_argument(
+        "--reload", action="store_true", help="Enable hot reloading for development"
+    )
+    args = parser.parse_args()
+
+    uvicorn.run(
+        "fraud_detection.api.app:create_app",
+        factory=True,
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+        log_level="info",
+    )
+
+
+if __name__ == "__main__":
+    main()
