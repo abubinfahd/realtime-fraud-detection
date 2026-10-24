@@ -119,12 +119,12 @@ class ConnectionManager:
         delivered_count = 0
 
         for res in results:
-            if isinstance(res, WebSocket):
-                failed_sockets.append(res)
+            if res is None:
+                delivered_count += 1
             elif isinstance(res, Exception):
                 pass
             else:
-                delivered_count += 1
+                failed_sockets.append(res)
 
         # Purge dead sockets from active pool
         if failed_sockets:
