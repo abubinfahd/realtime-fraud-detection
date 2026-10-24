@@ -159,7 +159,7 @@ When Stage 12 is triggered (`Start Step 12`):
 2. Implement `.github/workflows/ci.yml` and `.github/workflows/docker-publish.yml`.
 3. Implement `Dockerfile.consumer`, `Dockerfile.producer`, and `Dockerfile.api`.
 4. Create test suites in `tests/unit/` and `tests/integration/`.
-5. Update `README.md` and `docs/07-testing-and-performance.md`.
+5. Update `README.md` and `docs/stage-12-cicd-pipeline.md`.
 
 ---
 

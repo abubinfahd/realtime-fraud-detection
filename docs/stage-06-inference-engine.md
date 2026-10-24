@@ -125,7 +125,7 @@ When Stage 6 is triggered (`Start Step 6`):
 2. Create `src/fraud_detection/rules/rule_engine.py` with modular rule classes.
 3. Implement `src/fraud_detection/ml/inference.py` (`HybridInferenceEngine`) to load `artifacts/fraud_model.joblib` and perform vectorized inference.
 4. Implement `src/fraud_detection/streaming/consumer.py` & `scripts/run_consumer.py` orchestrating Kafka consumption, Redis features, scoring, and graceful shutdown signal handling (`SIGINT`, `SIGTERM`).
-5. Update `README.md` and `docs/06-realtime-inference.md`.
+5. Update `README.md` and `docs/stage-06-inference-engine.md`.
 
 ---
 

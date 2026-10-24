@@ -128,7 +128,7 @@ When Stage 10 is triggered (`Start Step 10`):
 2. Configure FastAPI to serve the dashboard at `/` or static mount.
 3. Implement `scripts/stress_test.py` and `scripts/chaos_test.py`.
 4. Run load benchmark at 100+ TPS and log latency percentiles (p50, p95, p99).
-5. Update `README.md` and `docs/07-testing-and-performance.md`.
+5. Update `README.md` and `docs/stage-10-dashboard-and-stress-testing.md`.
 
 ---
 
