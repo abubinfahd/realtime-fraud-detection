@@ -1,10 +1,11 @@
 """
 FastAPI application definition and lifecycle management.
 
-Configures lifespan startup/shutdown hooks, CORS middleware,
-health checks, and real-time fraud prediction API endpoints.
+Configures lifespan startup/shutdown hooks, Redis Pub/Sub streaming bridge,
+CORS middleware, WebSocket routing, and real-time fraud prediction API endpoints.
 """
 
+import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -13,11 +14,16 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from fraud_detection.api.routes import alerts, health, metrics, ws
+from fraud_detection.api.websocket_manager import manager
 from fraud_detection.core.config import settings
 from fraud_detection.core.logger import get_logger
 from fraud_detection.ml.features import extract_features
 from fraud_detection.ml.inference import InferenceEngine
 from fraud_detection.schemas.transaction import TransactionEvent
+from fraud_detection.storage.postgres_pool import PostgresPool
+from fraud_detection.storage.redis_publisher import RedisPublisher
+from fraud_detection.storage.transaction_repository import TransactionRepository
 
 logger = get_logger(__name__)
 
@@ -39,21 +45,44 @@ class PredictionResponse(BaseModel):
     )
 
 
-class HealthResponse(BaseModel):
-    """System health and readiness response."""
+async def _redis_pubsub_bridge(app: FastAPI, redis_publisher: RedisPublisher) -> None:
+    """
+    Background subscriber task bridging Redis Pub/Sub events to active WebSockets.
 
-    status: str
-    service: str
-    version: str
-    environment: str
-    model_loaded: bool
+    Consumes threat alerts from channel:fraud-alerts and fans out JSON frames
+    to all registered WebSocket clients concurrently via ConnectionManager.
+    """
+    channel = settings.REDIS_ALERT_CHANNEL
+    logger.info("Starting Redis Pub/Sub WebSocket broadcast bridge", extra={"channel": channel})
+    try:
+        async for raw_message in redis_publisher.subscribe(channel):
+            delivered = await manager.broadcast_json(raw_message)
+            logger.debug(
+                "Broadcasted Redis alert to WebSockets",
+                extra={"clients_notified": delivered},
+            )
+    except asyncio.CancelledError:
+        logger.info("Redis Pub/Sub WebSocket bridge cancelled during graceful shutdown")
+    except Exception as exc:
+        logger.warning(
+            "Redis Pub/Sub bridge encountered an unexpected exception",
+            extra={"error": str(exc)},
+        )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Application lifespan context: initialize and cache ML inference engine."""
-    logger.info("Initializing Real-Time Fraud Detection API", extra={"env": settings.ENVIRONMENT})
+    """
+    Application lifespan manager.
 
+    Initializes the ML inference engine, PostgreSQL pool, Redis publisher,
+    and runs the background Redis-to-WebSocket event streaming bridge.
+    """
+    logger.info(
+        "Initializing Real-Time Fraud Detection Gateway", extra={"env": settings.ENVIRONMENT}
+    )
+
+    # 1. Initialize & cache ML Inference Engine
     if settings.MODEL_PATH.exists():
         try:
             app.state.inference_engine = InferenceEngine(model_path=settings.MODEL_PATH)
@@ -68,16 +97,40 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
         app.state.inference_engine = None
 
+    # 2. Initialize PostgreSQL persistence layer
+    pg_pool = PostgresPool(mock_mode=settings.ENVIRONMENT != "production")
+    await pg_pool.initialize()
+    app.state.postgres_pool = pg_pool
+    app.state.transaction_repo = TransactionRepository(pg_pool)
+
+    # 3. Initialize Redis Pub/Sub publisher
+    redis_pub = RedisPublisher(mock_mode=settings.ENVIRONMENT != "production")
+    await redis_pub.initialize()
+    app.state.redis_publisher = redis_pub
+
+    # 4. Launch background Redis-to-WebSocket bridge task
+    bridge_task = asyncio.create_task(_redis_pubsub_bridge(app, redis_pub))
+    app.state.bridge_task = bridge_task
+
     yield
 
-    logger.info("Shutting down Real-Time Fraud Detection API")
+    # Graceful Shutdown
+    logger.info("Shutting down Real-Time Fraud Detection Gateway")
+    bridge_task.cancel()
+    try:
+        await asyncio.wait_for(bridge_task, timeout=1.0)
+    except (asyncio.CancelledError, asyncio.TimeoutError):
+        pass
+
+    await redis_pub.close()
+    await pg_pool.close()
 
 
 def create_app() -> FastAPI:
     """Factory creating and configuring the primary FastAPI application instance."""
     app = FastAPI(
         title="Real-Time Fraud Detection Streaming API",
-        description="Event-driven streaming API for sub-millisecond fraud scoring, WebSocket alerts, and telemetry.",
+        description="Event-driven streaming gateway for sub-millisecond fraud scoring, WebSocket alerts, and telemetry.",
         version="0.1.0",
         docs_url="/docs",
         redoc_url="/redoc",
@@ -94,6 +147,12 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Include modular sub-routers
+    app.include_router(health.router)
+    app.include_router(ws.router)
+    app.include_router(metrics.router)
+    app.include_router(alerts.router)
+
     @app.get("/", tags=["General"])
     async def root() -> dict[str, Any]:
         """Root endpoint returning service identity and documentation links."""
@@ -104,19 +163,10 @@ def create_app() -> FastAPI:
             "environment": settings.ENVIRONMENT,
             "docs": "/docs",
             "health": "/healthz",
+            "websocket_stream": "/ws/live-stream",
+            "metrics": "/api/v1/metrics",
+            "recent_alerts": "/api/v1/alerts/recent",
         }
-
-    @app.get("/healthz", response_model=HealthResponse, tags=["Observability"])
-    async def health_check() -> HealthResponse:
-        """Readiness and health status probe."""
-        model_ready = getattr(app.state, "inference_engine", None) is not None
-        return HealthResponse(
-            status="healthy" if model_ready else "degraded",
-            service="fraud-detection-api",
-            version="0.1.0",
-            environment=settings.ENVIRONMENT,
-            model_loaded=model_ready,
-        )
 
     @app.post(
         "/api/v1/predict",
