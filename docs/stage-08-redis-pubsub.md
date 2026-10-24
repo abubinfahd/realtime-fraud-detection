@@ -10,8 +10,8 @@ In high-throughput financial architectures, the backend consumer workers must re
 - Redis Pub/Sub provides a sub-millisecond, fire-and-forget event bus enabling inference workers to broadcast high-risk alerts to horizontally scalable edge gateways without blocking the stream.
 
 **Primary Deliverables:**
-- `storage/redis_publisher.py`: Asynchronous publisher wrapping Redis Pub/Sub with alert filtering and JSON payload formatting.
-- Integration into `consumers/fraud_consumer.py` to publish alerts when transactions are `FLAGGED` or `REJECTED`.
+- `src/fraud_detection/storage/redis_publisher.py`: Asynchronous publisher wrapping Redis Pub/Sub with alert filtering and JSON payload formatting.
+- Integration into `src/fraud_detection/streaming/consumer.py` (`scripts/run_consumer.py`) to publish alerts when transactions are `FLAGGED` or `REJECTED`.
 
 > [!NOTE]
 > **Execution Status:** **IMPLEMENTED & VERIFIED**.
@@ -113,7 +113,7 @@ Alerts contain the critical metadata required for immediate human review or auto
 
 ## 4. Implementation Deliverables
 
-1. `src/fraud_detection/storage/redis_publisher.py` & `storage/redis_publisher.py`: Asynchronous Redis Pub/Sub publisher with threat filtering, schema formatting, and in-memory broker fallback.
+1. `src/fraud_detection/storage/redis_publisher.py`: Asynchronous Redis Pub/Sub publisher with threat filtering, schema formatting, and in-memory broker fallback.
 2. `src/fraud_detection/streaming/consumer.py`: Integrated `RedisPublisher` into `FraudConsumer`, automatically routing high-risk alerts and tracking published metrics.
 3. `src/fraud_detection/streaming/listener.py` & `scripts/listen_alerts.py`: CLI real-time threat alerts subscriber tool with structured card rendering.
 4. `pyproject.toml`: Added `fraud-listen-alerts` CLI entrypoint script.

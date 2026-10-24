@@ -9,8 +9,8 @@ Stage 10 delivers the final capstone of the streaming system:
 **Primary Deliverables:**
 - `dashboard/index.html`: Responsive, dark-themed operations dashboard with live KPI counters, alert feed, and transaction ticker.
 - `dashboard/app.js`: Resilient WebSocket client with automatic exponential backoff reconnection.
-- `benchmarks/stress_test.py`: End-to-end stress harness generating 100+ TPS with latency tracking.
-- `benchmarks/chaos_test.py`: Worker crash and offset recovery verification script.
+- `scripts/stress_test.py`: End-to-end stress harness generating 100+ TPS with latency tracking.
+- `scripts/chaos_test.py`: Worker crash and offset recovery verification script.
 
 > [!IMPORTANT]
 > **Execution Status:** **SPECIFICATION & DESIGN PHASE**.
@@ -22,7 +22,7 @@ Stage 10 delivers the final capstone of the streaming system:
 
 ```mermaid
 flowchart TD
-    subgraph BenchmarkHarness["Stress Test Suite (benchmarks/stress_test.py)"]
+    subgraph BenchmarkHarness["Stress Test Suite (scripts/stress_test.py)"]
         PROD["100+ TPS Kafka Producer\n(Injecting High-Risk Anomaly Bursts)"]
     end
 
@@ -126,7 +126,7 @@ To validate production readiness, the system undergoes crash recovery validation
 When Stage 10 is triggered (`Start Step 10`):
 1. Create `dashboard/index.html` and `dashboard/app.js`.
 2. Configure FastAPI to serve the dashboard at `/` or static mount.
-3. Implement `benchmarks/stress_test.py` and `benchmarks/chaos_test.py`.
+3. Implement `scripts/stress_test.py` and `scripts/chaos_test.py`.
 4. Run load benchmark at 100+ TPS and log latency percentiles (p50, p95, p99).
 5. Update `README.md` and `docs/07-testing-and-performance.md`.
 

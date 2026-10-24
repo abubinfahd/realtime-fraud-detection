@@ -85,12 +85,12 @@ Every stage developed across this repository directly feeds into the Azure produ
 | **Stage 1: Container Infrastructure** | [docker-compose.yml](file:///E:/CODE/SC/real-time-fraud-detection/docker-compose.yml) | Base foundation translated to `docker-compose.prod.yml` running on Azure VM | Containers report `healthy` via native healthchecks |
 | **Stage 2: Database & Indexes** | [stage-02-database.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-02-database.md) (`database/init.sql`) | Mounted into `/docker-entrypoint-initdb.d/` on Azure Postgres container | Tables `users`, `accounts`, `transactions` created with composite indexes |
 | **Stage 3: Offline ML Pipeline** | [stage-03-ml-pipeline.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-03-ml-pipeline.md) (`artifacts/fraud_model.joblib`) | Model bundle packaged into consumer image or mounted via `/app/artifacts` | Real-time LightGBM + Isolation Forest inference (< 3ms P95 latency) |
-| **Stage 4: Synthetic Kafka Producer** | [stage-04-kafka-producer.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-04-kafka-producer.md) (`producers/`) | Production service `fraud-producer` streaming transactions at 20–50 TPS | Continuous synthetic event flow without manual intervention |
-| **Stage 5: Redis Feature Store** | [stage-05-redis-feature-store.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-05-redis-feature-store.md) (`consumers/features.py`) | In-memory Redis sliding windows (`tx_count_1m`, `tx_sum_10m`) via Sorted Sets | Sub-millisecond feature lookup during stream processing |
-| **Stage 6: Real-Time Inference Consumer**| [stage-06-inference-engine.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-06-inference-engine.md) (`consumers/`) | Core worker container `fraud-consumer` consuming Kafka topic `transactions` | Evaluates rules, scores ML models, outputs `APPROVED`/`FLAGGED`/`REJECTED` |
-| **Stage 7: Postgres Persistence** | [stage-07-postgres-persistence.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-07-postgres-persistence.md) (`consumers/storage.py`) | Async batch inserts into Azure PostgreSQL container | Immutable audit log stored with JSONB feature vectors |
-| **Stage 8: Redis Pub/Sub Fan-Out** | [stage-08-redis-pubsub.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-08-redis-pubsub.md) (`consumers/publisher.py`) | Publishes alerts (`FLAGGED`/`REJECTED`) to channel `fraud-alerts` | Decouples inference throughput from WebSocket delivery |
-| **Stage 9: FastAPI WebSocket Hub** | [stage-09-fastapi-websocket.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-09-fastapi-websocket.md) (`api/main.py`) | Async ASGI server `fraud-api` exposed publicly on port 8000 | Persistent WebSocket connections broadcast alerts to browsers |
+| **Stage 4: Synthetic Kafka Producer** | [stage-04-kafka-producer.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-04-kafka-producer.md) (`scripts/run_producer.py`) | Production service `fraud-producer` streaming transactions at 20–50 TPS | Continuous synthetic event flow without manual intervention |
+| **Stage 5: Redis Feature Store** | [stage-05-redis-feature-store.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-05-redis-feature-store.md) (`src/fraud_detection/storage/`) | In-memory Redis sliding windows (`tx_count_1m`, `tx_sum_10m`) via Sorted Sets | Sub-millisecond feature lookup during stream processing |
+| **Stage 6: Real-Time Inference Consumer**| [stage-06-inference-engine.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-06-inference-engine.md) (`scripts/run_consumer.py`) | Core worker container `fraud-consumer` consuming Kafka topic `transactions` | Evaluates rules, scores ML models, outputs `APPROVED`/`FLAGGED`/`REJECTED` |
+| **Stage 7: Postgres Persistence** | [stage-07-postgres-persistence.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-07-postgres-persistence.md) (`src/fraud_detection/storage/`) | Async batch inserts into Azure PostgreSQL container | Immutable audit log stored with JSONB feature vectors |
+| **Stage 8: Redis Pub/Sub Fan-Out** | [stage-08-redis-pubsub.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-08-redis-pubsub.md) (`src/fraud_detection/storage/redis_publisher.py`) | Publishes alerts (`FLAGGED`/`REJECTED`) to channel `fraud-alerts` | Decouples inference throughput from WebSocket delivery |
+| **Stage 9: FastAPI WebSocket Hub** | [stage-09-fastapi-websocket.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-09-fastapi-websocket.md) (`scripts/run_gateway.py`) | Async ASGI server `fraud-api` exposed publicly on port 8000 | Persistent WebSocket connections broadcast alerts to browsers |
 | **Stage 10: Live Dashboard & Stress Tests**| [stage-10-dashboard-and-stress-testing.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-10-dashboard-and-stress-testing.md) (`dashboard/`) | Static dashboard served via FastAPI, exposed over Azure Public IP & DNS | Real-time KPI counters, alert feed, and live transaction ticker |
 | **Stage 11: MLOps & Drift Monitoring** | [stage-11-mlops-pipeline.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-11-mlops-pipeline.md) (`mlops/`) | Automated cron script running `drift_detector.py` against live transactions | Computes Population Stability Index (PSI) and Kolmogorov-Smirnov test |
 | **Stage 12: CI/CD Packaging** | [stage-12-cicd-pipeline.md](file:///E:/CODE/SC/real-time-fraud-detection/docs/stage-12-cicd-pipeline.md) (`.github/workflows/`) | GitHub Actions workflow pushing images to Azure Container Registry (ACR) | Zero-downtime container updates upon merge to `main` branch |
@@ -863,7 +863,7 @@ When new fraud patterns emerge or Stage 11 drift monitoring detects distribution
 
 ```mermaid
 flowchart LR
-    A["Stage 11: Drift Detected\n(PSI >= 0.25)"] --> B["Train New Candidate\nmodels/train.py"]
+    A["Stage 11: Drift Detected\n(PSI >= 0.25)"] --> B["Train New Candidate\nsrc/fraud_detection/ml/train.py"]
     B --> C["Verify Quality Gate\n(PR-AUC >= 0.85\nLatency < 3ms)"]
     C --> D["Serialize New Bundle\nartifacts/fraud_model.joblib"]
     D --> E["Deploy to Azure VM\nHot Reload / Restart"]
@@ -872,7 +872,7 @@ flowchart LR
 
 1. **Train & Validate Champion Model Locally (Stage 3):**
    ```bash
-   uv run python -m models.train
+   uv run python -m fraud_detection.ml.train
    ```
    Verify that candidate exceeds quality gates: $\text{PR-AUC} \ge 0.850$, $\text{P95 Latency} < 3.0\text{ ms}$.
 
@@ -919,7 +919,7 @@ To continuously validate that transaction patterns have not drifted:
 | Symptom | Diagnostic Command on VM | Probable Cause & Resolution |
 | :--- | :--- | :--- |
 | **Kafka Broker Unhealthy** | `docker logs fraud-kafka \| grep -i error` | Out of memory or disk limits. Check `sysctl vm.max_map_count` and free disk space (`df -h`). |
-| **Consumer Lag Growing** | `docker exec fraud-kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group fraud-detector-group` | Model scoring taking too long or slow Postgres batch inserts. Increase consumer batch size in `consumers/config.py`. |
+| **Consumer Lag Growing** | `docker exec fraud-kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group fraud-detector-group` | Model scoring taking too long or slow Postgres batch inserts. Increase consumer batch size in `src/fraud_detection/streaming/config.py`. |
 | **Redis Memory Spiking** | `docker exec fraud-redis redis-cli -a SuperSecretRedisPass2026! INFO memory` | Sorted set sliding windows not expiring. Confirm TTL policies (`EXPIRE` after 600s). |
 | **Dashboard WebSocket Disconnecting** | `docker logs --tail 50 fraud-api` | Port 8000 blocked by NSG or CORS error. Verify inbound rule `Allow-Dashboard-WebSockets` on NSG. |
 | **Postgres Disk Fill-Up** | `docker exec fraud-postgres psql -U postgres -d fraud_detection -c "SELECT pg_size_pretty(pg_total_relation_size('transactions'));"` | High TPS audit log accumulation. Set up a partition pruning job or purge transactions older than 30 days. |

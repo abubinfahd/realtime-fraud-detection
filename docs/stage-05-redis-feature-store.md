@@ -7,9 +7,9 @@ Stage 5 implements the real-time feature store using **Redis 7 Sorted Sets**. In
 Querying a relational database like PostgreSQL for trailing sliding-window aggregations across millions of rows causes severe disk I/O bottlenecks and exceeds the 10 ms latency SLA. Redis in-memory Sorted Sets provide the sub-millisecond sliding-window operations required for real-time feature engineering.
 
 **Primary Deliverables:**
-- `storage/redis_feature_store.py`: High-performance asynchronous interface utilizing `redis.asyncio` and pipelines for atomic sliding-window ingestion and feature retrieval.
-- `storage/lua_scripts.py`: Pre-compiled Lua scripts to execute window pruning, insertion, and aggregation within a single atomic round-trip.
-- `benchmarks/benchmark_redis.py`: Standalone benchmark validating sub-millisecond latency under concurrent read/write load.
+- `src/fraud_detection/storage/redis_feature_store.py`: High-performance asynchronous interface utilizing `redis.asyncio` and pipelines for atomic sliding-window ingestion and feature retrieval.
+- `src/fraud_detection/storage/lua_scripts.py`: Pre-compiled Lua scripts to execute window pruning, insertion, and aggregation within a single atomic round-trip.
+- `src/fraud_detection/storage/benchmark.py` & `scripts/run_benchmark.py`: Standalone benchmark validating sub-millisecond latency under concurrent read/write load.
 
 > [!NOTE]
 > **Execution Status:** **IMPLEMENTED & VERIFIED**.
@@ -127,16 +127,16 @@ Unbounded Redis memory growth is a common failure mode in feature stores.
 
 ## 4. Implementation Deliverables
 - [x] Added `redis>=5.0.0` to `pyproject.toml`.
-- [x] Implemented `src/fraud_detection/storage/redis_feature_store.py` & `storage/redis_feature_store.py` providing:
+- [x] Implemented `src/fraud_detection/storage/redis_feature_store.py` providing:
    - Connection pool management (`redis.asyncio.ConnectionPool`).
    - `update_and_get_velocity_features(user_id, tx_id, amount, timestamp) -> dict`.
    - `get_velocity_features(user_id, timestamp) -> dict`.
    - `get_key_ttl(user_id) -> int`.
    - `reset_user_history(user_id) -> bool`.
    - Built-in `InMemorySortedSetStore` simulation engine for offline testing and development.
-- [x] Implemented `src/fraud_detection/storage/lua_scripts.py` & `storage/lua_scripts.py`:
+- [x] Implemented `src/fraud_detection/storage/lua_scripts.py`:
    - Single round-trip atomic execution for pruning, insertion, dual-window aggregation, and TTL extension.
-- [x] Implemented `src/fraud_detection/storage/benchmark.py` & `benchmarks/benchmark_redis.py` executing 5,000 asynchronous feature store operations.
+- [x] Implemented `src/fraud_detection/storage/benchmark.py` & `scripts/run_benchmark.py` executing 5,000 asynchronous feature store operations.
 - [x] Implemented automated test suite in `tests/test_redis_feature_store.py` covering eviction, dual sliding windows, TTL, and integration with `extract_features`.
 
 ---

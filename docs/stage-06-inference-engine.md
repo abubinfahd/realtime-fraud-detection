@@ -12,10 +12,10 @@ Stage 6 builds the core real-time processing engine: the **Inference Consumer Wo
 7. Emits an actionable verdict (`APPROVED`, `FLAGGED`, `REJECTED`) and composite risk score.
 
 **Primary Deliverables:**
-- `consumers/fraud_consumer.py`: High-throughput async consumer loop running with `confluent-kafka` and `asyncio`.
-- `models/inference_engine.py`: Thread-safe, CPU-optimized model inference wrapper.
-- `rules/rule_engine.py`: Deterministic rule evaluator for compliance and instant risk overrides.
-- `schemas/transaction.py`: Pydantic V2 schema definitions for validation and serialization.
+- `src/fraud_detection/streaming/consumer.py` & `scripts/run_consumer.py`: High-throughput async consumer loop running with `confluent-kafka` and `asyncio`.
+- `src/fraud_detection/ml/inference.py`: Thread-safe, CPU-optimized model inference wrapper.
+- `src/fraud_detection/rules/rule_engine.py`: Deterministic rule evaluator for compliance and instant risk overrides.
+- `src/fraud_detection/schemas/transaction.py`: Pydantic V2 schema definitions for validation and serialization.
 
 > [!IMPORTANT]
 > **Execution Status:** **IMPLEMENTED & VERIFIED**.
@@ -121,10 +121,10 @@ To maintain a total service-level objective (SLO) of **< 15 ms** per transaction
 ## 4. Implementation Deliverables (When Triggered)
 
 When Stage 6 is triggered (`Start Step 6`):
-1. Create `schemas/transaction.py` with Pydantic V2 models.
-2. Create `rules/rule_engine.py` with modular rule classes.
-3. Create `models/inference_engine.py` to load `artifacts/fraud_model.joblib` and perform vectorized inference.
-4. Implement `consumers/fraud_consumer.py` orchestrating Kafka consumption, Redis features, scoring, and graceful shutdown signal handling (`SIGINT`, `SIGTERM`).
+1. Create `src/fraud_detection/schemas/transaction.py` with Pydantic V2 models.
+2. Create `src/fraud_detection/rules/rule_engine.py` with modular rule classes.
+3. Implement `src/fraud_detection/ml/inference.py` (`HybridInferenceEngine`) to load `artifacts/fraud_model.joblib` and perform vectorized inference.
+4. Implement `src/fraud_detection/streaming/consumer.py` & `scripts/run_consumer.py` orchestrating Kafka consumption, Redis features, scoring, and graceful shutdown signal handling (`SIGINT`, `SIGTERM`).
 5. Update `README.md` and `docs/06-realtime-inference.md`.
 
 ---

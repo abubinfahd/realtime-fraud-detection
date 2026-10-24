@@ -7,9 +7,9 @@ Stage 7 implements high-throughput, asynchronous persistence of evaluated transa
 2. **High Write Throughput:** The database writer must ingest hundreds to thousands of records per second without introducing backpressure that stalls the Kafka consumer.
 
 **Primary Deliverables:**
-- `storage/postgres_pool.py`: Asynchronous connection pool manager using `asyncpg`.
-- `storage/transaction_repository.py`: Repository handling micro-batched multi-row inserts and idempotency resolution.
-- `consumers/persistence_worker.py`: Async queue worker or embedded consumer sink that flushes scored transactions in micro-batches.
+- `src/fraud_detection/storage/postgres_pool.py`: Asynchronous connection pool manager using `asyncpg`.
+- `src/fraud_detection/storage/transaction_repository.py`: Repository handling micro-batched multi-row inserts and idempotency resolution.
+- `src/fraud_detection/streaming/persistence_buffer.py` & `scripts/run_persistence_worker.py`: Async queue worker or embedded consumer sink that flushes scored transactions in micro-batches.
 
 > [!NOTE]
 > **Execution Status:** **IMPLEMENTED & VERIFIED**.
@@ -112,9 +112,9 @@ db_pool = await asyncpg.create_pool(
 
 1. `pyproject.toml`: Added `"asyncpg>=0.29.0"` dependency.
 2. `src/fraud_detection/core/config.py`: Added `POSTGRES_MIN_CONNECTIONS` (5), `POSTGRES_MAX_CONNECTIONS` (20), `POSTGRES_BATCH_SIZE` (50), `POSTGRES_FLUSH_INTERVAL_SECONDS` (0.05).
-3. `src/fraud_detection/storage/postgres_pool.py` & `storage/postgres_pool.py`: High-performance asynchronous pool manager with offline simulator fallback.
-4. `src/fraud_detection/storage/transaction_repository.py` & `storage/transaction_repository.py`: Multi-row batched insert repository with foreign key fixtures and indexed aggregation queries.
-5. `src/fraud_detection/streaming/persistence_buffer.py` & `consumers/persistence_worker.py`: Async queue buffer with size/timer dual-trigger flushes and CLI test runner.
+3. `src/fraud_detection/storage/postgres_pool.py`: High-performance asynchronous pool manager with offline simulator fallback.
+4. `src/fraud_detection/storage/transaction_repository.py`: Multi-row batched insert repository with foreign key fixtures and indexed aggregation queries.
+5. `src/fraud_detection/streaming/persistence_buffer.py` & `scripts/run_persistence_worker.py`: Async queue buffer with size/timer dual-trigger flushes and CLI test runner.
 6. `src/fraud_detection/streaming/consumer.py`: Integrated persistence buffer into inference pipeline with graceful lifecycle flush.
 7. `tests/test_postgres_persistence.py`: Automated unit test suite validating pool lifecycle, repository precision, idempotency, size triggers, time triggers, drain-on-stop, and consumer integration.
 

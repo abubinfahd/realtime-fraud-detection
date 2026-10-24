@@ -5,9 +5,9 @@
 Stage 4 develops a high-throughput, configurable synthetic transaction generator using `confluent-kafka` and `Faker`. In a production-style streaming portfolio, a realistic producer is vital: it must generate legitimate behavioral distributions alongside controlled anomaly injections (velocity spikes, impossible geo-travel, extreme charge amounts) to thoroughly validate downstream consumer workers, feature aggregators, and inference models.
 
 **Primary Deliverables:**
-- `producers/transaction_producer.py`: High-performance asynchronous Kafka producer with configurable transactions-per-second (TPS) rate limiting and automated anomaly injection modes.
-- `producers/anomalies.py`: Dedicated fraud pattern generator (velocity attacks, geographic jumps, card testing).
-- `producers/config.py`: Producer tuning parameters (`bootstrap_servers`, batch sizes, compression, delivery reports).
+- `src/fraud_detection/streaming/producer.py` & `scripts/run_producer.py`: High-performance asynchronous Kafka producer with configurable transactions-per-second (TPS) rate limiting and automated anomaly injection modes.
+- `src/fraud_detection/streaming/anomalies.py`: Dedicated fraud pattern generator (velocity attacks, geographic jumps, card testing).
+- `src/fraud_detection/streaming/config.py`: Producer tuning parameters (`bootstrap_servers`, batch sizes, compression, delivery reports).
 
 > [!NOTE]
 > **Execution Status:** **IMPLEMENTED & VERIFIED**.
@@ -112,9 +112,9 @@ producer_config = {
 
 ## 4. Implementation Deliverables
 - [x] Added `confluent-kafka` and `faker` to `pyproject.toml`.
-- [x] Implemented `producers/config.py` & `src/fraud_detection/streaming/config.py` with environment variable loading.
-- [x] Implemented `producers/anomalies.py` & `src/fraud_detection/streaming/anomalies.py` with 4 synthetic attack generators (velocity burst, high-value outlier, impossible travel, nocturnal fraud).
-- [x] Implemented `producers/transaction_producer.py` & `src/fraud_detection/streaming/producer.py` supporting CLI flags:
+- [x] Implemented `src/fraud_detection/streaming/config.py` with environment variable loading.
+- [x] Implemented `src/fraud_detection/streaming/anomalies.py` with 4 synthetic attack generators (velocity burst, high-value outlier, impossible travel, nocturnal fraud).
+- [x] Implemented `src/fraud_detection/streaming/producer.py` & `scripts/run_producer.py` supporting CLI flags:
    - `--tps <float>`: Target transactions per second (default: 50.0).
    - `--anomaly-rate <float>`: Fraud percentage (default: 0.02).
    - `--max-events <int>`: Stop after N events (or run continuously).

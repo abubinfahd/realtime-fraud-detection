@@ -99,29 +99,14 @@ real-time-fraud-detection/
 │   ├── stage-03-ml-pipeline.md      # Hybrid ML pipeline, PR-AUC & CPU benchmark (Stage 3)
 │   └── stage-04 to stage-13...      # Specifications & execution guides for each stage
 │
-├── benchmarks/                      # Performance and SLA benchmarking suites (Stage 3, Stage 5)
-│   └── benchmark_redis.py           # Real-time Redis velocity feature store concurrency benchmark
-│
-├── producers/                       # Synthetic transaction generator CLI scripts (Stage 4)
-│   ├── transaction_producer.py      # Executable producer script with Token Bucket rate limiter
-│   ├── anomalies.py                 # Multi-modal fraud attack generators (spikes, geo, ATO)
-│   └── config.py                    # Producer configuration and librdkafka options
-│
-├── consumers/                       # Real-time event consumer CLI scripts (Stage 6)
-│   └── fraud_consumer.py            # High-throughput async Kafka fraud consumer worker
-│
-├── rules/                           # Deterministic business & compliance rules (Stage 6)
-│   └── rule_engine.py               # Deterministic rule evaluator with Haversine distance
-│
-├── models/                          # In-memory ML inference wrappers (Stage 6)
-│   └── inference_engine.py          # Real-time CPU hybrid scoring wrapper
-│
-├── schemas/                         # Pydantic data contracts (Stage 6)
-│   └── transaction.py               # Inbound transaction event schema
-│
-├── storage/                         # Real-time feature store interfaces (Stage 5)
-│   ├── redis_feature_store.py       # High-level async Redis feature store wrapper
-│   └── lua_scripts.py               # Pre-compiled atomic Redis sliding-window scripts
+├── scripts/                         # Executable utility and standalone runner scripts
+│   ├── run_producer.py              # Synthetic transaction producer launcher
+│   ├── run_consumer.py              # Real-time fraud consumer worker launcher
+│   ├── run_persistence_worker.py    # PostgreSQL micro-batching buffer demo
+│   ├── run_gateway.py               # FastAPI streaming gateway server launcher
+│   ├── run_benchmark.py             # Redis feature store concurrency benchmark launcher
+│   ├── listen_alerts.py             # Real-time terminal threat alert listener
+│   └── generate_bengali_guide.py    # Comprehensive Bengali guide compiler
 │
 ├── src/
 │   └── fraud_detection/             # Core application package (src-layout)
@@ -157,7 +142,7 @@ real-time-fraud-detection/
 │       │
 │       └── api/                     # FastAPI ASGI gateway & WebSocket hub (Stage 9+)
 │
-├── tests/                           # Automated unit test suite (77 tests across all stages)
+├── tests/                           # Automated unit test suite (100 tests across all stages)
 │   ├── conftest.py                  # Pytest fixtures and mock objects
 │   ├── test_api.py                  # FastAPI health check and prediction endpoint tests
 │   ├── test_consumer.py             # Real-time Kafka consumer, DLQ routing & alert tests (Stage 6)
@@ -296,13 +281,13 @@ uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ### 6.9 Synthetic High-Frequency Kafka Producer (Stage 4)
 ```bash
 # 1. Start continuous Kafka producer streaming at 50 TPS with 2% anomaly injection
-uv run python producers/transaction_producer.py --tps 50 --anomaly-rate 0.02
+uv run python scripts/run_producer.py --tps 50 --anomaly-rate 0.02
 
 # Or use the installed CLI entrypoint:
 uv run fraud-producer --tps 50 --anomaly-rate 0.02
 
 # 2. Run simulation in dry-run mode (emits 10 formatted events without requiring Kafka):
-uv run python producers/transaction_producer.py --dry-run --max-events 10
+uv run python scripts/run_producer.py --dry-run --max-events 10
 
 # 3. Verify live messages consumed from Kafka cluster:
 # Windows PowerShell (single line):
@@ -312,13 +297,13 @@ docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-s
 ### 6.10 Redis Real-Time Feature Store Benchmark (Stage 5)
 ```bash
 # 1. Run concurrency benchmark against live Redis (5,000 operations across 50 concurrent workers):
-uv run python benchmarks/benchmark_redis.py --num-ops 5000 --concurrency 50
+uv run python scripts/run_benchmark.py --num-ops 5000 --concurrency 50
 
 # Or using the installed CLI entrypoint:
 uv run fraud-redis-benchmark --num-ops 5000 --concurrency 50
 
 # 2. Run benchmark in simulation mode (offline in-memory Sorted Set engine):
-uv run python benchmarks/benchmark_redis.py --mock --num-ops 1000 --concurrency 20
+uv run python scripts/run_benchmark.py --mock --num-ops 1000 --concurrency 20
 
 # 3. Inspect active keys and verify 30-minute key TTL via redis-cli:
 docker compose exec redis redis-cli KEYS "user:*:tx_history"
@@ -328,7 +313,7 @@ docker compose exec redis redis-cli TTL "user:<user_id>:tx_history"
 ### 6.11 Real-Time Kafka Fraud Consumer Worker (Stage 6)
 ```bash
 # 1. Start continuous Kafka fraud consumer worker:
-uv run python consumers/fraud_consumer.py --auto-offset-reset latest
+uv run python scripts/run_consumer.py --auto-offset-reset latest
 
 # Or using the installed CLI entrypoint:
 uv run fraud-consumer --auto-offset-reset latest
@@ -343,10 +328,10 @@ uv run fraud-consumer --mock --max-messages 50
 uv sync
 
 # 2. Run standalone micro-batch persistence worker demo (persists 100 transactions):
-uv run python consumers/persistence_worker.py --count 100
+uv run python scripts/run_persistence_worker.py --count 100
 
 # In offline simulation mode:
-uv run python consumers/persistence_worker.py --count 100 --mock
+uv run python scripts/run_persistence_worker.py --count 100 --mock
 
 # 3. Run consumer worker with live PostgreSQL micro-batch persistence enabled:
 uv run fraud-consumer --mock --max-messages 50
@@ -469,7 +454,7 @@ Detailed reproduction steps and troubleshooting guides are available in [docs/02
   - Rate Limiting: Token Bucket algorithm for steady-state throughput (configurable TPS via `--tps`)
   - Key Invariance: Strictly routes messages with `key=str(user_id)` to guarantee intra-partition chronological order
   - Anomaly Topologies: Card testing velocity bursts (8-15 tx/20s), high-value ATOs ($1.2k-$5k), impossible geo-travel, nocturnal fraud
-  - Execution: `uv run python producers/transaction_producer.py` or `uv run fraud-producer` with `--dry-run` simulation support
+  - Execution: `uv run python scripts/run_producer.py` or `uv run fraud-producer` with `--dry-run` simulation support
 
 - [x] **Stage 5: Redis Real-Time Feature Store** — [Specification & Guide](docs/stage-05-redis-feature-store.md)
   - Data Structure: Redis 7 Sorted Sets (`user:{user_id}:tx_history`) with epoch millisecond scores and packed members (`tx_id:amount`)
