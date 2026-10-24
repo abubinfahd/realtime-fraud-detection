@@ -373,9 +373,29 @@ docker compose exec redis redis-cli SUBSCRIBE channel:fraud-alerts
 uv run pytest tests/test_redis_pubsub.py -v
 ```
 
+### 6.14 FastAPI WebSocket Hub & Streaming Gateway (Stage 9)
+```bash
+# 1. Start FastAPI streaming gateway server:
+uv run python scripts/run_gateway.py --port 8000
 
+# Or via installed CLI entrypoint:
+uv run fraud-gateway --port 8000
 
----
+# Or via Uvicorn ASGI runner:
+uv run uvicorn main:app --port 8000 --reload
+
+# 2. Connect to WebSocket alert stream:
+# ws://localhost:8000/ws/live-stream (or /ws/alerts)
+
+# 3. Test REST endpoints:
+curl http://localhost:8000/healthz
+curl http://localhost:8000/api/v1/metrics
+curl http://localhost:8000/api/v1/alerts/recent?limit=10
+curl http://localhost:8000/api/v1/alerts/summary
+
+# 4. Run automated WebSocket & API test suite:
+uv run pytest tests/test_api.py tests/test_websocket.py -v
+```
 
 
 
@@ -458,10 +478,26 @@ Detailed reproduction steps and troubleshooting guides are available in [docs/02
   - Memory Hygiene: Sliding 1,800-second (30-minute) TTL evicts dormant accounts from memory
   - Benchmark SLA: Concurrency load testing verifies sub-millisecond p95 latency (< 0.1 ms in-memory, ~0.6 ms live Redis)
 
-- [ ] **Stage 6: Core Event Consumer & Real-Time ML Inference Engine** — [Specification & Guide](docs/stage-06-inference-engine.md)
-- [ ] **Stage 7: PostgreSQL Persistence Layer** — [Specification & Guide](docs/stage-07-postgres-persistence.md)
-- [ ] **Stage 8: Redis Pub/Sub Event Fan-Out** — [Specification & Guide](docs/stage-08-redis-pubsub.md)
-- [ ] **Stage 9: FastAPI WebSocket Hub** — [Specification & Guide](docs/stage-09-fastapi-websocket.md)
+- [x] **Stage 6: Core Event Consumer & Real-Time ML Inference Engine** — [Specification & Guide](docs/stage-06-inference-engine.md)
+  - Engine: Dual hybrid inference (Supervised LightGBM + Unsupervised Fast Isolation Forest)
+  - Composite Scoring: `Composite_Risk = (0.65 * LightGBM) + (0.35 * IsolationForest) + Rule_Penalty`
+  - Consumer: Low-latency manual offset commit, error dead-lettering, sub-2.0ms inference latency
+
+- [x] **Stage 7: PostgreSQL Persistence Layer & Micro-Batching Buffer** — [Specification & Guide](docs/stage-07-postgres-persistence.md)
+  - Engine: Asynchronous `asyncpg` binary connection pool with non-blocking persistence worker
+  - Micro-Batching: Dual-trigger queue flush (50 events or 50 ms timeout)
+  - Idempotency: `ON CONFLICT (transaction_ref) DO NOTHING` prevents duplicate double-counting
+
+- [x] **Stage 8: Redis Pub/Sub Event Fan-Out & Threat Alert Broadcasting** — [Specification & Guide](docs/stage-08-redis-pubsub.md)
+  - Engine: Non-blocking fire-and-forget Redis Pub/Sub publisher (`< 0.2 ms`)
+  - Verdict Filtering: Isolates `FLAGGED` / `REJECTED` threats, shielding downstream clients from 95%+ safe traffic
+  - Real-Time Subscriber: Terminal threat intelligence listener rendering actionable fraud cards
+
+- [x] **Stage 9: FastAPI WebSocket Hub & Streaming Alert Gateway** — [Specification & Guide](docs/stage-09-fastapi-websocket.md)
+  - Gateway: Concurrent WebSocket ConnectionManager fanning out live alerts in `< 2 ms`
+  - Lifespan Bridge: Background async subscriber connecting Redis `channel:fraud-alerts` to WebSocket clients
+  - REST Observability: Deep health probe (`/healthz`), telemetry (`/api/v1/metrics`), and hydration (`/api/v1/alerts/recent`)
+
 - [ ] **Stage 10: Real-Time Dashboard & End-to-End Stress Testing** — [Specification & Guide](docs/stage-10-dashboard-and-stress-testing.md)
 - [ ] **Stage 11: MLOps: Experiment Tracking, Model Registry & Drift Monitoring** — [Specification & Guide](docs/stage-11-mlops-pipeline.md)
 - [ ] **Stage 12: CI/CD: Automated Testing, Linting & Container Packaging** — [Specification & Guide](docs/stage-12-cicd-pipeline.md)
