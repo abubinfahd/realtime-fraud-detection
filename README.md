@@ -286,6 +286,21 @@ uv run fraud-gateway --port 8000
 uv run uvicorn main:app --port 8000 --reload
 ```
 
+### 4.8 Stage 10: Real-Time Operations Dashboard & Stress/Chaos Testing
+Launch the mission control operations dashboard, run sustained 100+ TPS load tests, and verify consumer crash resilience:
+```bash
+# 1. Open the Real-Time Mission Control Dashboard in your browser:
+# Start the gateway server (if not already running)
+uv run python scripts/run_gateway.py --port 8000
+# Navigate to: http://localhost:8000/dashboard/
+
+# 2. Run sustained 100+ TPS end-to-end stress test benchmark (profiles per-hop latencies):
+uv run python scripts/stress_test.py --mock --tps 100 --duration 5
+
+# 3. Run chaos engineering worker crash and offset recovery verification harness:
+uv run python scripts/chaos_test.py --mock
+```
+
 ---
 
 ## 5. How the Detection Engine Works (Under the Hood)
@@ -324,6 +339,7 @@ The FastAPI gateway hosts both REST endpoints and real-time streaming WebSockets
 
 | Method | Endpoint | Description | Sample Response / Event |
 | :--- | :--- | :--- | :--- |
+| `GET` | `/dashboard/` | Real-time operations mission control single-page app | Interactive dark glassmorphism dashboard UI |
 | `GET` | `/healthz` | Comprehensive component health (Kafka, Redis, Postgres) | `{"status": "healthy", "components": {...}}` |
 | `POST` | `/api/v1/predict` | Synchronous real-time fraud scoring API | `{"transaction_id": "...", "status": "APPROVED", "risk_score": 0.082}` |
 | `GET` | `/api/v1/metrics` | Real-time streaming throughput and latency metrics | `{"total_processed": 1420, "average_latency_ms": 1.45}` |
@@ -342,6 +358,9 @@ This repository strictly adheres to modern Python packaging best practices (PEP 
 real-time-fraud-detection/
 │
 ├── artifacts/                       # Serialized model bundles and metadata (fraud_model.joblib)
+├── dashboard/                       # Single-page operations mission control dashboard
+│   ├── index.html                   # HTML5 dark glassmorphism layout, KPI cards & tickers
+│   └── app.js                       # Resilient WebSocket client, backoff reconnect & Web Audio chime
 ├── data/
 │   └── raw/
 │       ├── transactions_10k.csv     # 10k synthetic transaction dataset (1.0% multi-modal fraud)
@@ -375,6 +394,8 @@ real-time-fraud-detection/
 │   ├── run_gateway.py               # FastAPI streaming gateway server launcher
 │   ├── run_benchmark.py             # Redis feature store concurrency benchmark launcher
 │   ├── listen_alerts.py             # Real-time terminal threat alert listener
+│   ├── stress_test.py               # 100+ TPS end-to-end stress test & latency profiling
+│   ├── chaos_test.py                # Worker crash, offset recovery & DB deduplication
 │   └── generate_bengali_guide.py    # Comprehensive Bengali guide compiler (.docx & .md)
 │
 ├── src/
@@ -387,7 +408,7 @@ real-time-fraud-detection/
 │       ├── streaming/               # Kafka producer, consumer worker & persistence buffer
 │       └── api/                     # FastAPI ASGI gateway, WebSocket manager & routes
 │
-├── tests/                           # Automated Pytest suite (100 tests across all stages)
+├── tests/                           # Automated Pytest suite (108 tests across all stages)
 ├── .env.example                     # Environment variables configuration template
 ├── .gitignore                       # Git exclusions (Python, Docker, artifacts, secrets)
 ├── .pre-commit-config.yaml          # Pre-commit hooks (Ruff linter/formatter, security checks)
@@ -401,7 +422,7 @@ real-time-fraud-detection/
 
 ## 8. Automated Testing & Code Quality
 
-The repository includes a comprehensive automated test suite with **100 tests** covering every layer of the system:
+The repository includes a comprehensive automated test suite with **108 tests** covering every layer of the system:
 
 ```bash
 # 1. Run all unit tests
@@ -439,6 +460,8 @@ uv run ruff format
 - **Redis Benchmark:** `uv run python scripts/run_benchmark.py --mock --num-ops 1000`
 - **Persistence Worker:** `uv run python scripts/run_persistence_worker.py --mock --count 50`
 - **Alert Listener:** `uv run python scripts/listen_alerts.py --mock --max-alerts 5`
+- **Stress Benchmark:** `uv run python scripts/stress_test.py --mock --tps 100 --duration 5`
+- **Chaos Resilience:** `uv run python scripts/chaos_test.py --mock`
 
 ### Q2: Port already in use error (`8000`, `5432`, `6379`, or `9092`)
 If a local service is already using one of these ports:
@@ -468,7 +491,7 @@ docker compose down -v
 ## 10. Project Roadmap (Stages 1 to 13)
 
 | Stage | Name | Specification | Status |
-| :---: | :--- | :--- | :---: |
+| :---: | :--- | :--- | :--- | :---: |
 | **01** | Environment Setup & Container Orchestration (KRaft, Redis 7, Postgres 16) | [stage-01-infrastructure.md](docs/stage-01-infrastructure.md) | ✅ Complete |
 | **02** | Relational Database Schema & B-Tree Index Optimization | [stage-02-database.md](docs/stage-02-database.md) | ✅ Complete |
 | **03** | Offline ML Model Training & Fast CPU Inference Benchmark | [stage-03-ml-pipeline.md](docs/stage-03-ml-pipeline.md) | ✅ Complete |
@@ -478,7 +501,7 @@ docker compose down -v
 | **07** | PostgreSQL Async Persistence Layer & Micro-Batching Buffer | [stage-07-postgres-persistence.md](docs/stage-07-postgres-persistence.md) | ✅ Complete |
 | **08** | Redis Pub/Sub Event Fan-Out & Threat Alert Broadcasting | [stage-08-redis-pubsub.md](docs/stage-08-redis-pubsub.md) | ✅ Complete |
 | **09** | FastAPI ASGI WebSocket Hub & Streaming Gateway | [stage-09-fastapi-websocket.md](docs/stage-09-fastapi-websocket.md) | ✅ Complete |
-| **10** | Real-Time Dashboard & End-to-End Stress Testing | [stage-10-dashboard-and-stress-testing.md](docs/stage-10-dashboard-and-stress-testing.md) | 📋 Specified |
+| **10** | Real-Time Dashboard & End-to-End Stress Testing | [stage-10-dashboard-and-stress-testing.md](docs/stage-10-dashboard-and-stress-testing.md) | ✅ Complete |
 | **11** | MLOps: Experiment Tracking, Model Registry & Drift Monitoring | [stage-11-mlops-pipeline.md](docs/stage-11-mlops-pipeline.md) | 📋 Specified |
 | **12** | CI/CD: Automated Testing, Linting & Container Packaging | [stage-12-cicd-pipeline.md](docs/stage-12-cicd-pipeline.md) | 📋 Specified |
 | **13** | Microsoft Azure Cloud Deployment ($200 Budget Optimized) | [stage-13-azure-cloud-deployment.md](docs/stage-13-azure-cloud-deployment.md) | 📋 Specified |
