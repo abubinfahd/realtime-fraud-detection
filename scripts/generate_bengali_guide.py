@@ -650,29 +650,44 @@ def build_full_guide(docx_path: str, md_path: str) -> None:
     )
 
     md_h2("১. ডিরেক্টরি স্ট্রাকচার (কোড কোথায় থাকে?)")
+    md_p(
+        "একটি প্রফেশনাল ফিনটেক সিস্টেমে কোড স্ট্রাকচার হওয়া উচিত পরিষ্কার ও নেমস্পেস-সংঘাতমুক্ত। "
+        "পূর্বে রুটে থাকা ডুপ্লিকেট ফোল্ডারগুলো (api/, storage/, rules/, schemas/, models/, producers/, consumers/, benchmarks/) "
+        "অপসারণ করে পাইথন ইন্ডাস্ট্রির বেস্ট প্র্যাকটিস PEP 517/518 'src-layout' আর্কিটেকচার চূড়ান্ত করা হয়েছে:",
+        bold_prefix="ইন্ডাস্ট্রি স্ট্যান্ডার্ড src-layout:",
+    )
     md_bullet(
-        "সিস্টেমের সমস্ত আসল প্রোডাকশন কোড এখানে থাকে। এটি একটি ইনস্টলেবল প্যাকেজ হিসেবে কাজ করে।",
+        "সিস্টেমের সমস্ত আসল প্রোডাকশন কোড এখানে থাকে। এটি একটি সম্পূর্ণ ইনস্টলেবল প্যাকেজ হিসেবে কাজ করে।",
         bold_prefix="src/fraud_detection/:",
     )
     md_bullet(
         "সিস্টেমের কনফিগারেশন, লগিং ও গ্লোবাল কনস্ট্যান্টস।", bold_prefix="src/fraud_detection/core/:"
     )
     md_bullet(
-        "Pydantic V2 ডেটা ভ্যালিডেশন মডেল (যাতে ভুল ফরম্যাটের কোনো ডেটা ঢুকতে না পারে)।",
+        "Pydantic V2 ডেটা ভ্যালিডেশন মডেল ও ফ্রড অ্যালার্ট ডেটা কন্ট্রাক্ট।",
         bold_prefix="src/fraud_detection/schemas/:",
     )
     md_bullet(
-        "মেশিন লার্নিং প্রিপ্রসেসিং, ফিচার স্কেলিং ও মডেল ইনফারেন্স লজিক।",
+        "মেশিন লার্নিং প্রিপ্রসেসিং, ফিচার স্কেলিং, ট্রেইনিং ও সাব-মিলিসেকেন্ড সিপিইউ ইনফারেন্স।",
         bold_prefix="src/fraud_detection/ml/:",
     )
     md_bullet(
-        "কাফকা প্রডিউসার, কনজিউমার এবং সিন্থেটিক অ্যানোমালি তৈরি।",
+        "কাফকা প্রডিউসার, হাই-থ্রুপুট ফ্রড কনজিউমার লুপ এবং সিন্থেটিক অ্যাটাক জেনারেটর।",
         bold_prefix="src/fraud_detection/streaming/:",
     )
     md_bullet(
-        "রেডিস ফিচার স্টোর এবং পোস্টগ্রেস অডিট রিপোজিটরি।", bold_prefix="src/fraud_detection/storage/:"
+        "রেডিস স্লাইডিং-উইন্ডো ফিচার স্টোর, লুয়া স্ক্রিপ্ট এবং পোস্টগ্রেস অডিট রিপোজিটরি।",
+        bold_prefix="src/fraud_detection/storage/:",
     )
-    md_bullet("সমস্ত স্বয়ংক্রিয় টেস্ট স্ক্রিপ্ট (Pytest)।", bold_prefix="tests/:")
+    md_bullet(
+        "ফাস্টএপিআই ওয়েবসকেট গেটওয়ে, লাইভ থ্রেট স্ট্রিমিং ও হেলথ চেক এন্ডপয়েন্ট।",
+        bold_prefix="src/fraud_detection/api/:",
+    )
+    md_bullet(
+        "সমস্ত এক্সিকিউটেবল রানার ও ইউটিলিটি স্ক্রিপ্ট (run_producer, run_consumer, run_gateway, run_benchmark, listen_alerts)।",
+        bold_prefix="scripts/:",
+    )
+    md_bullet("সমস্ত স্বয়ংক্রিয় টেস্ট স্ক্রিপ্ট (১০০টি Pytest টেস্ট)।", bold_prefix="tests/:")
 
     md_h2("২. কনফিগারেশন ও পরিবেশ নিরাপত্তা (`config.py`)")
     md_p(
@@ -1074,7 +1089,7 @@ def build_full_guide(docx_path: str, md_path: str) -> None:
     md_code("uv run python scripts/listen_alerts.py --mock --max-alerts 5")
 
     md_h2("৪. পোস্টগ্রেস মাইক্রো-ব্যাচিং বাফার টেস্ট (স্টেজ ৭)")
-    md_code("uv run python consumers/persistence_worker.py --count 100 --mock")
+    md_code("uv run python scripts/run_persistence_worker.py --count 100 --mock")
 
     md_h2("৫. রিয়েল-টাইম ফ্রড কনজিউমার রান (স্টেজ ৬)")
     md_code("uv run fraud-consumer --mock --max-messages 25")
