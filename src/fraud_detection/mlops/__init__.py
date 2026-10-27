@@ -8,6 +8,7 @@ Pillars:
 """
 
 from fraud_detection.mlops.drift_detector import DriftDetector, DriftReport, FeatureDriftResult
+from fraud_detection.mlops.pipeline import RetrainingPipeline
 from fraud_detection.mlops.registry import ModelRegistry, ModelVersion, PromotionGateResult
 from fraud_detection.mlops.tracking import ExperimentTracker, RunContext
 
@@ -19,5 +20,6 @@ __all__ = [
     "ModelRegistry",
     "ModelVersion",
     "PromotionGateResult",
+    "RetrainingPipeline",
     "RunContext",
 ]
