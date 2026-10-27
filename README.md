@@ -393,6 +393,7 @@ real-time-fraud-detection/
 │   ├── run_persistence_worker.py    # PostgreSQL micro-batching buffer demo
 │   ├── run_gateway.py               # FastAPI streaming gateway server launcher
 │   ├── run_benchmark.py             # Redis feature store concurrency benchmark launcher
+│   ├── run_retraining.py            # MLOps continuous retraining & drift monitor launcher
 │   ├── listen_alerts.py             # Real-time terminal threat alert listener
 │   ├── stress_test.py               # 100+ TPS end-to-end stress test & latency profiling
 │   ├── chaos_test.py                # Worker crash, offset recovery & DB deduplication
@@ -404,11 +405,12 @@ real-time-fraud-detection/
 │       ├── schemas/                 # Pydantic V2 data contracts (Transaction, Alert)
 │       ├── rules/                   # Deterministic security & compliance rule engine
 │       ├── ml/                      # Machine learning training, evaluate & CPU inference
+│       ├── mlops/                   # Experiment tracking, model registry & drift detection
 │       ├── storage/                 # Redis feature store, Lua scripts & Postgres connection pool
 │       ├── streaming/               # Kafka producer, consumer worker & persistence buffer
 │       └── api/                     # FastAPI ASGI gateway, WebSocket manager & routes
 │
-├── tests/                           # Automated Pytest suite (108 tests across all stages)
+├── tests/                           # Automated Pytest suite (120 tests across all stages)
 ├── .env.example                     # Environment variables configuration template
 ├── .gitignore                       # Git exclusions (Python, Docker, artifacts, secrets)
 ├── .pre-commit-config.yaml          # Pre-commit hooks (Ruff linter/formatter, security checks)
@@ -462,6 +464,7 @@ uv run ruff format
 - **Alert Listener:** `uv run python scripts/listen_alerts.py --mock --max-alerts 5`
 - **Stress Benchmark:** `uv run python scripts/stress_test.py --mock --tps 100 --duration 5`
 - **Chaos Resilience:** `uv run python scripts/chaos_test.py --mock`
+- **MLOps Retraining:** `uv run python scripts/run_retraining.py --simulate-drift --dry-run`
 
 ### Q2: Port already in use error (`8000`, `5432`, `6379`, or `9092`)
 If a local service is already using one of these ports:
@@ -502,6 +505,6 @@ docker compose down -v
 | **08** | Redis Pub/Sub Event Fan-Out & Threat Alert Broadcasting | [stage-08-redis-pubsub.md](docs/stage-08-redis-pubsub.md) | ✅ Complete |
 | **09** | FastAPI ASGI WebSocket Hub & Streaming Gateway | [stage-09-fastapi-websocket.md](docs/stage-09-fastapi-websocket.md) | ✅ Complete |
 | **10** | Real-Time Dashboard & End-to-End Stress Testing | [stage-10-dashboard-and-stress-testing.md](docs/stage-10-dashboard-and-stress-testing.md) | ✅ Complete |
-| **11** | MLOps: Experiment Tracking, Model Registry & Drift Monitoring | [stage-11-mlops-pipeline.md](docs/stage-11-mlops-pipeline.md) | 📋 Specified |
+| **11** | MLOps: Experiment Tracking, Model Registry & Drift Monitoring | [stage-11-mlops-pipeline.md](docs/stage-11-mlops-pipeline.md) | ✅ Complete |
 | **12** | CI/CD: Automated Testing, Linting & Container Packaging | [stage-12-cicd-pipeline.md](docs/stage-12-cicd-pipeline.md) | 📋 Specified |
 | **13** | Microsoft Azure Cloud Deployment ($200 Budget Optimized) | [stage-13-azure-cloud-deployment.md](docs/stage-13-azure-cloud-deployment.md) | 📋 Specified |
