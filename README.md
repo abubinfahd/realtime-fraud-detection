@@ -117,11 +117,11 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 ```
 
-### Step 2: Run All 100 Automated Unit Tests
+### Step 2: Run All 120 Automated Unit Tests
 ```bash
 uv run pytest
 ```
-*Expected output: `100 passed` (or 99 passed, 1 skipped) in ~20 seconds.*
+*Expected output: `120 passed` (or 119 passed, 1 skipped) in ~20 seconds.*
 
 ### Step 3: Test Saved AI Model Inference on 10 Demo Transactions
 ```bash
@@ -143,6 +143,12 @@ Open your web browser:
 - **Interactive Swagger Documentation:** [`http://localhost:8000/docs`](http://localhost:8000/docs)
 - **Deep Health Check:** [`http://localhost:8000/healthz`](http://localhost:8000/healthz)
 - **Live System Metrics:** [`http://localhost:8000/api/v1/metrics`](http://localhost:8000/api/v1/metrics)
+
+### Step 6: Test MLOps Drift Detection & Continuous Retraining
+```bash
+uv run python scripts/run_retraining.py --simulate-drift --dry-run
+```
+*Simulates statistical data & concept drift, evaluates Population Stability Index (PSI) and KS-test statistics, fits candidate models, validates promotion gates (PR-AUC >= 0.85, P95 latency <= 3.0 ms), and outputs governance audit summary.*
 
 ---
 
@@ -301,6 +307,26 @@ uv run python scripts/stress_test.py --mock --tps 100 --duration 5
 uv run python scripts/chaos_test.py --mock
 ```
 
+### 4.9 Stage 11: MLOps: Experiment Tracking, Model Registry & Continuous Retraining
+Monitors statistical feature drift (Population Stability Index [PSI], Kolmogorov-Smirnov [KS-test]), tracks experiments, validates model governance gates, and executes continuous retraining:
+```bash
+# 1. Run statistical drift evaluation on live/recent batches (retrains only if PSI >= 0.25):
+uv run python scripts/run_retraining.py
+
+# 2. Simulate severe production data and concept drift to test the automated retraining trigger:
+# (Injects 3.5x amount spikes, velocity bursts, and target fraud rate shifts)
+uv run python scripts/run_retraining.py --simulate-drift
+
+# 3. Dry-Run Mode: Evaluate drift and candidate promotion gates without replacing active production model:
+uv run python scripts/run_retraining.py --simulate-drift --dry-run
+
+# 4. Force Retraining: Immediately retrain candidate models, evaluate gates, and update registry:
+uv run python scripts/run_retraining.py --force
+
+# 5. Run MLOps Automated Test Suite (12 unit and integration tests):
+uv run pytest tests/test_mlops.py -v
+```
+
 ---
 
 ## 5. How the Detection Engine Works (Under the Hood)
@@ -424,7 +450,7 @@ real-time-fraud-detection/
 
 ## 8. Automated Testing & Code Quality
 
-The repository includes a comprehensive automated test suite with **108 tests** covering every layer of the system:
+The repository includes a comprehensive automated test suite with **120 tests** covering every layer of the system:
 
 ```bash
 # 1. Run all unit tests
@@ -433,7 +459,10 @@ uv run pytest
 # 2. Run tests with verbose output and test names
 uv run pytest -v
 
-# 3. Run tests with code coverage report
+# 3. Run Stage 11 MLOps test suite (tracking, registry, drift detector):
+uv run pytest tests/test_mlops.py -v
+
+# 4. Run tests with code coverage report
 uv run pytest --cov=fraud_detection --cov-report=term-missing
 ```
 
