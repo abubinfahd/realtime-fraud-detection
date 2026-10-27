@@ -7,6 +7,13 @@ Pillars:
 4. Continuous Retraining: Automated pipelines triggered by drift or schedule.
 """
 
+from fraud_detection.mlops.registry import ModelRegistry, ModelVersion, PromotionGateResult
 from fraud_detection.mlops.tracking import ExperimentTracker, RunContext
 
-__all__ = ["ExperimentTracker", "RunContext"]
+__all__ = [
+    "ExperimentTracker",
+    "ModelRegistry",
+    "ModelVersion",
+    "PromotionGateResult",
+    "RunContext",
+]
