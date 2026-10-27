@@ -18,6 +18,9 @@ dependencies = [
     "faker>=25.0.0",
     "redis>=5.0.0",
     "asyncpg>=0.29.0",
+    "scipy>=1.13.0",
+    "matplotlib>=3.9.0",
+    "mlflow>=2.15.0",
 ]
 
 [dependency-groups]
