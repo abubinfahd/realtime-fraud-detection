@@ -246,6 +246,7 @@ class RetrainingPipeline:
             model_name=self.model_name,
             version=version.version,
             deploy_to_artifacts=deploy,
+            gates=gate_criteria,
         )
 
         return promoted_version, gate_result

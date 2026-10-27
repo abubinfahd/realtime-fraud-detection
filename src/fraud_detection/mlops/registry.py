@@ -18,6 +18,7 @@ from pathlib import Path
 import shutil
 from typing import Any
 
+from fraud_detection.core.config import settings
 from fraud_detection.core.logger import get_logger
 
 logger = get_logger("fraud_detection.mlops.registry")
@@ -88,10 +89,14 @@ class ModelRegistry:
         self,
         registry_dir: Path | str | None = None,
         gates: dict[str, float] | None = None,
+        production_model_path: Path | str | None = None,
     ) -> None:
         self.registry_dir = Path(registry_dir or "artifacts/model_registry")
         self.registry_dir.mkdir(parents=True, exist_ok=True)
         self.gates = gates or dict(DEFAULT_PROMOTION_GATES)
+        self.production_model_path = Path(
+            production_model_path or getattr(settings, "MODEL_PATH", "artifacts/fraud_model.joblib")
+        )
 
         self._mlflow_client: Any = None
         self._mlflow_enabled = False
@@ -313,6 +318,7 @@ class ModelRegistry:
         version: int,
         force: bool = False,
         deploy_to_artifacts: bool = True,
+        gates: dict[str, float] | None = None,
     ) -> tuple[ModelVersion, PromotionGateResult]:
         """
         Evaluate candidate and atomically promote it to Production stage.
@@ -324,7 +330,7 @@ class ModelRegistry:
         if candidate is None:
             raise ValueError(f"Model '{model_name}' version {version} not found in registry.")
 
-        gate_result = self.evaluate_gates(candidate)
+        gate_result = self.evaluate_gates(candidate, gates=gates)
 
         if not gate_result.passed and not force:
             reasons_str = "; ".join(gate_result.failure_reasons)
@@ -356,8 +362,8 @@ class ModelRegistry:
         # Deploy champion artifact directly to production serving path
         if deploy_to_artifacts:
             src_artifact = Path(promoted_obj.artifact_path)
-            dest_prod = Path("artifacts/fraud_model.joblib")
-            if src_artifact.exists():
+            dest_prod = self.production_model_path
+            if src_artifact.exists() and src_artifact.resolve() != dest_prod.resolve():
                 dest_prod.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src_artifact, dest_prod)
                 print(f"[PASS] Champion artifact deployed to production serving path: {dest_prod}")
@@ -414,3 +420,7 @@ class ModelRegistry:
 
         self._save_manifest(model_name, manifest)
         return updated_obj
+
+    # Convenient aliases for API backwards compatibility
+    get_version_history = list_versions
+    get_champion = get_production_model

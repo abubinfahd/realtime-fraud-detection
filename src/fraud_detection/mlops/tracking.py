@@ -140,6 +140,11 @@ class ExperimentTracker:
 
         self._init_backend()
 
+    @property
+    def active_run(self) -> RunContext | None:
+        """Return active RunContext if currently executing a run, else None."""
+        return self._active_run
+
     def _init_backend(self) -> None:
         """Initialize MLflow client if available, otherwise prepare local structured store."""
         try:
@@ -435,6 +440,9 @@ class ExperimentTracker:
             with open(meta_file, encoding="utf-8") as f:
                 return json.load(f)
         return None
+
+    # Convenient alias for MLflow client compatibility
+    search_runs = list_runs
 
     def get_latest_run(self) -> dict[str, Any] | None:
         """Retrieve most recently initiated run."""
