@@ -323,7 +323,13 @@ uv run python scripts/run_retraining.py --simulate-drift --dry-run
 # 4. Force Retraining: Immediately retrain candidate models, evaluate gates, and update registry:
 uv run python scripts/run_retraining.py --force
 
-# 5. Run MLOps Automated Test Suite (12 unit and integration tests):
+# 5. Visualize MLOps Tracking & Governance Dashboard:
+uv run python scripts/visualize_mlops.py
+
+# 6. Launch Official MLflow UI Dashboard (runs on http://localhost:5000):
+uv run python scripts/run_mlflow.py
+
+# 7. Run MLOps Automated Test Suite (12 unit and integration tests):
 uv run pytest tests/test_mlops.py -v
 ```
 
