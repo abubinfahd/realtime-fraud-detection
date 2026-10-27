@@ -13,6 +13,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -162,6 +163,16 @@ def create_app() -> FastAPI:
             "/dashboard", StaticFiles(directory=str(dashboard_dir), html=True), name="dashboard"
         )
 
+    @app.get("/mlops", response_class=HTMLResponse, tags=["MLOps"])
+    async def mlops_dashboard() -> HTMLResponse:
+        """Serve live MLOps interactive dashboard with experiment tracking and registry governance."""
+        mlops_html_path = Path("artifacts/mlops_dashboard.html")
+        if not mlops_html_path.exists():
+            from scripts.visualize_mlops import generate_html_dashboard, load_mlops_data
+
+            generate_html_dashboard(load_mlops_data(Path("artifacts")), mlops_html_path)
+        return HTMLResponse(content=mlops_html_path.read_text(encoding="utf-8"))
+
     @app.get("/", tags=["General"])
     async def root() -> dict[str, Any]:
         """Root endpoint returning service identity and documentation links."""
@@ -171,6 +182,7 @@ def create_app() -> FastAPI:
             "status": "operational",
             "environment": settings.ENVIRONMENT,
             "dashboard": "/dashboard/",
+            "mlops_dashboard": "/mlops",
             "docs": "/docs",
             "health": "/healthz",
             "websocket_stream": "/ws/live-stream",
