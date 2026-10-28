@@ -310,27 +310,32 @@ uv run python scripts/chaos_test.py --mock
 ### 4.9 Stage 11: MLOps: Experiment Tracking, Model Registry & Continuous Retraining
 Monitors statistical feature drift (Population Stability Index [PSI], Kolmogorov-Smirnov [KS-test]), tracks experiments, validates model governance gates, and executes continuous retraining:
 ```bash
-# 1. Run statistical drift evaluation on live/recent batches (retrains only if PSI >= 0.25):
-uv run python scripts/run_retraining.py
+# 1. Baseline Drift Check: Normal check on live batches (retraining skipped if PSI < 0.10):
+uv run python -W ignore scripts/run_retraining.py
 
-# 2. Simulate severe production data and concept drift to test the automated retraining trigger:
-# (Injects 3.5x amount spikes, velocity bursts, and target fraud rate shifts)
-uv run python scripts/run_retraining.py --simulate-drift
+# 2. Simulated Drift Trial (Dry-Run): Injects 3.5x amount spike to test detection & quality gates without replacing active production model:
+uv run python -W ignore scripts/run_retraining.py --simulate-drift --dry-run
 
-# 3. Dry-Run Mode: Evaluate drift and candidate promotion gates without replacing active production model:
-uv run python scripts/run_retraining.py --simulate-drift --dry-run
+# 3. Automated Retraining & Live Promotion: Evaluates gates and promotes new Champion model (updates artifacts/fraud_model.joblib):
+uv run python -W ignore scripts/run_retraining.py --simulate-drift
 
 # 4. Force Retraining: Immediately retrain candidate models, evaluate gates, and update registry:
-uv run python scripts/run_retraining.py --force
+uv run python -W ignore scripts/run_retraining.py --force
 
-# 5. Visualize MLOps Tracking & Governance Dashboard:
+# 5. Instant Built-in MLOps Dashboard (Opens interactive HTML dashboard in default browser):
 uv run python scripts/visualize_mlops.py
 
-# 6. Launch Official MLflow UI Dashboard (runs on http://localhost:5000):
-uv run python scripts/run_mlflow.py
+# 6. Official MLflow UI (Zero-Error SQLite Backend on http://localhost:5002):
+# First, sync tracked runs to SQLite database:
+uv run python -c "import json, glob, mlflow; mlflow.set_tracking_uri('sqlite:///mlflow.db'); [ (mlflow.set_experiment(d['experiment']), mlflow.start_run(run_name=d['run_name']), mlflow.log_params(d.get('params',{})), mlflow.log_metrics(d.get('metrics',{})), mlflow.end_run()) for p in glob.glob('artifacts/mlruns/*/*/run_meta.json') for d in [json.load(open(p))] ]; print('Synced to MLflow DB!')"
+# Then launch MLflow UI single-worker server:
+uv run mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5002 --workers 1
 
 # 7. Run MLOps Automated Test Suite (12 unit and integration tests):
 uv run pytest tests/test_mlops.py -v
+
+# 8. Clean all Stage 11 MLOps Artifacts (Reset to clean state):
+Remove-Item -Recurse -Force ./mlruns, ./mlflow.db, artifacts/mlruns, artifacts/model_registry, artifacts/mlops_dashboard.html, artifacts/candidate_model_*.joblib, artifacts/mlflow.db -ErrorAction SilentlyContinue
 ```
 
 ---
