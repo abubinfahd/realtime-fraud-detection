@@ -13,8 +13,6 @@ A production-grade, distributed, event-driven streaming system for **real-time f
 
 > [!TIP]
 > **Complete Beginner?** You can run the entire system in **Zero-Docker Simulation Mode** in under 3 minutes without installing Docker, Kafka, Redis, or PostgreSQL! Jump straight to [Section 2: Beginner Fast-Track](#2-beginner-fast-track-zero-docker-simulation-in-3-minutes).
->
-> **সম্পূর্ণ বাংলা গাইড প্রয়োজন?** শিক্ষানবিসদের জন্য তৈরি বিস্তারিত বাংলা ডকুমেন্টেশন ও গাইড পড়তে দেখুন: [docs/Real_Time_Fraud_Detection_Bengali_Guide.md](docs/Real_Time_Fraud_Detection_Bengali_Guide.md) অথবা Word ফাইল: [docs/Real_Time_Fraud_Detection_Bengali_Guide.docx](docs/Real_Time_Fraud_Detection_Bengali_Guide.docx)।
 
 ---
 
