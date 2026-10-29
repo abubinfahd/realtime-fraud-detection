@@ -40,7 +40,7 @@ A production-grade, distributed, event-driven streaming system for **real-time f
 - [7. Project Directory Tour (Standard `src-layout`)](#7-project-directory-tour-standard-src-layout)
 - [8. Automated Testing & Code Quality](#8-automated-testing--code-quality)
 - [9. Beginner Troubleshooting & FAQ](#9-beginner-troubleshooting--faq)
-- [10. Project Roadmap (Stages 1 to 13)](#10-project-roadmap-stages-1-to-13)
+- [10. Project Roadmap & Architectural Lifecycle](#10-project-roadmap--architectural-lifecycle)
 
 ---
 
@@ -529,20 +529,43 @@ docker compose down -v
 
 ---
 
-## 10. Project Roadmap (Stages 1 to 13)
+## 10. Project Roadmap & Architectural Lifecycle
 
-| Stage | Name | Specification | Status |
-| :---: | :--- | :--- | :--- | :---: |
-| **01** | Environment Setup & Container Orchestration (KRaft, Redis 7, Postgres 16) | [stage-01-infrastructure.md](docs/stage-01-infrastructure.md) | ✅ Complete |
-| **02** | Relational Database Schema & B-Tree Index Optimization | [stage-02-database.md](docs/stage-02-database.md) | ✅ Complete |
-| **03** | Offline ML Model Training & Fast CPU Inference Benchmark | [stage-03-ml-pipeline.md](docs/stage-03-ml-pipeline.md) | ✅ Complete |
-| **04** | Synthetic High-Frequency Kafka Producer with Token Bucket Rate Limiting | [stage-04-kafka-producer.md](docs/stage-04-kafka-producer.md) | ✅ Complete |
-| **05** | Redis Real-Time Feature Store (Atomic Lua Sliding Windows) | [stage-05-redis-feature-store.md](docs/stage-05-redis-feature-store.md) | ✅ Complete |
-| **06** | Real-Time Kafka Consumer, Deterministic Rules & ML Scoring Engine | [stage-06-inference-engine.md](docs/stage-06-inference-engine.md) | ✅ Complete |
-| **07** | PostgreSQL Async Persistence Layer & Micro-Batching Buffer | [stage-07-postgres-persistence.md](docs/stage-07-postgres-persistence.md) | ✅ Complete |
-| **08** | Redis Pub/Sub Event Fan-Out & Threat Alert Broadcasting | [stage-08-redis-pubsub.md](docs/stage-08-redis-pubsub.md) | ✅ Complete |
-| **09** | FastAPI ASGI WebSocket Hub & Streaming Gateway | [stage-09-fastapi-websocket.md](docs/stage-09-fastapi-websocket.md) | ✅ Complete |
-| **10** | Real-Time Dashboard & End-to-End Stress Testing | [stage-10-dashboard-and-stress-testing.md](docs/stage-10-dashboard-and-stress-testing.md) | ✅ Complete |
-| **11** | MLOps: Experiment Tracking, Model Registry & Drift Monitoring | [stage-11-mlops-pipeline.md](docs/stage-11-mlops-pipeline.md) | ✅ Complete |
-| **12** | CI/CD: Automated Testing, Linting & Container Packaging | [stage-12-cicd-pipeline.md](docs/stage-12-cicd-pipeline.md) | 📋 Specified |
-| **13** | Microsoft Azure Cloud Deployment ($200 Budget Optimized) | [stage-13-azure-cloud-deployment.md](docs/stage-13-azure-cloud-deployment.md) | 📋 Specified |
+```text
+Progress: [████████████████████░░] 11 of 13 Stages Completed (85%)
+```
+
+The system is constructed as a 13-stage production engineering blueprint organized into 5 architectural phases:
+
+### 🏗️ Phase 1: Storage Foundations & Container Infrastructure
+| Stage | Component | Core Architecture & Deliverables | Spec Link | Status |
+| :---: | :--- | :--- | :---: | :---: |
+| **01** | **Container Orchestration** | Redpanda/Kafka KRaft cluster, Redis 7 Alpine, PostgreSQL 16 compose infrastructure | [`stage-01`](docs/stage-01-infrastructure.md) | `✅ Complete` |
+| **02** | **Relational Schema Design** | Optimized B-Tree indexed schemas, connection pooling, idempotency constraints | [`stage-02`](docs/stage-02-database.md) | `✅ Complete` |
+
+### 🧠 Phase 2: Feature Engineering & Machine Learning
+| Stage | Component | Core Architecture & Deliverables | Spec Link | Status |
+| :---: | :--- | :--- | :---: | :---: |
+| **03** | **Offline ML Training** | Dual-model ensemble (LightGBM + Isolation Forest), sub-2ms CPU inference benchmark | [`stage-03`](docs/stage-03-ml-pipeline.md) | `✅ Complete` |
+| **05** | **Real-Time Feature Store** | Atomic Redis Lua scripts with sliding-window aggregations (1m, 5m, 1h, 24h) | [`stage-05`](docs/stage-05-redis-feature-store.md) | `✅ Complete` |
+
+### ⚡ Phase 3: Real-Time Streaming & Scoring Pipeline
+| Stage | Component | Core Architecture & Deliverables | Spec Link | Status |
+| :---: | :--- | :--- | :---: | :---: |
+| **04** | **High-Frequency Producer** | Synthetic payment transaction generator, Token Bucket rate-limiting (100–1000 TPS) | [`stage-04`](docs/stage-04-kafka-producer.md) | `✅ Complete` |
+| **06** | **Inference Consumer Engine** | Real-time Kafka consumer, deterministic rules, hybrid ML scoring & verdict engine | [`stage-06`](docs/stage-06-inference-engine.md) | `✅ Complete` |
+| **07** | **Micro-Batched Persistence** | Dynamic size & time-flush queue buffer into PostgreSQL with zero event loss | [`stage-07`](docs/stage-07-postgres-persistence.md) | `✅ Complete` |
+| **08** | **Pub/Sub Threat Broadcasting** | Redis Pub/Sub broadcast channel for high-risk threat alerts & incident events | [`stage-08`](docs/stage-08-redis-pubsub.md) | `✅ Complete` |
+
+### 🖥️ Phase 4: API Gateway, Live Dashboard & Reliability
+| Stage | Component | Core Architecture & Deliverables | Spec Link | Status |
+| :---: | :--- | :--- | :---: | :---: |
+| **09** | **FastAPI ASGI Gateway** | WebSocket live stream fan-out, health probes, Prometheus metrics & REST API | [`stage-09`](docs/stage-09-fastapi-websocket.md) | `✅ Complete` |
+| **10** | **Operations Dashboard & Chaos** | Mission control visualizer, sustained 100+ TPS stress benchmarks, worker crash resilience | [`stage-10`](docs/stage-10-dashboard-and-stress-testing.md) | `✅ Complete` |
+
+### 🚀 Phase 5: Production MLOps, CI/CD & Cloud Deployment
+| Stage | Component | Core Architecture & Deliverables | Spec Link | Status |
+| :---: | :--- | :--- | :---: | :---: |
+| **11** | **MLOps & Drift Monitoring** | Feature drift detection (PSI / KS-test), experiment tracking, model registry & auto-retraining | [`stage-11`](docs/stage-11-mlops-pipeline.md) | `✅ Complete` |
+| **12** | **CI/CD Automation** | GitHub Actions multi-matrix validation, Ruff linting, test suite coverage & Docker packaging | [`stage-12`](docs/stage-12-cicd-pipeline.md) | `📋 Ready to Implement` |
+| **13** | **Cloud Production Deployment** | Microsoft Azure VM / Container Apps deployment ($200 budget optimized) | [`stage-13`](docs/stage-13-azure-cloud-deployment.md) | `📋 Planned` |
