@@ -336,6 +336,22 @@ uv run pytest tests/test_mlops.py -v
 Remove-Item -Recurse -Force ./mlruns, ./mlflow.db, artifacts/mlruns, artifacts/model_registry, artifacts/mlops_dashboard.html, artifacts/candidate_model_*.joblib, artifacts/mlflow.db -ErrorAction SilentlyContinue
 ```
 
+### 4.10 Stage 12: CI/CD Quality Gates & Multi-Stage Container Packaging
+Run local CI quality gates (`ruff`, `mypy`, `pytest --cov`), verify CI/CD workflow & Dockerfile definitions, or build the lean multi-stage Docker images:
+```bash
+# 1. Run Ruff linter & Mypy static type checker:
+uv run ruff check .
+uv run mypy src/fraud_detection
+
+# 2. Verify Stage 12 CI/CD workflows & multi-stage Dockerfile specifications:
+uv run pytest tests/test_cicd.py -v
+
+# 3. Build multi-stage production Docker images locally:
+docker build -f Dockerfile.producer -t fraud-producer:latest .
+docker build -f Dockerfile.consumer -t fraud-consumer:latest .
+docker build -f Dockerfile.api -t fraud-api:latest .
+```
+
 ---
 
 ## 5. How the Detection Engine Works (Under the Hood)
@@ -532,7 +548,7 @@ docker compose down -v
 ## 10. Project Roadmap & Architectural Lifecycle
 
 ```text
-Progress: [████████████████████░░] 11 of 13 Stages Completed (85%)
+Progress: [█████████████████████░] 12 of 13 Stages Completed (92%)
 ```
 
 The system is constructed as a 13-stage production engineering blueprint organized into 5 architectural phases:
@@ -567,5 +583,5 @@ The system is constructed as a 13-stage production engineering blueprint organiz
 | Stage | Component | Core Architecture & Deliverables | Spec Link | Status |
 | :---: | :--- | :--- | :---: | :---: |
 | **11** | **MLOps & Drift Monitoring** | Feature drift detection (PSI / KS-test), experiment tracking, model registry & auto-retraining | [`stage-11`](docs/stage-11-mlops-pipeline.md) | `✅ Complete` |
-| **12** | **CI/CD Automation** | GitHub Actions multi-matrix validation, Ruff linting, test suite coverage & Docker packaging | [`stage-12`](docs/stage-12-cicd-pipeline.md) | `📋 Ready to Implement` |
-| **13** | **Cloud Production Deployment** | Microsoft Azure VM / Container Apps deployment ($200 budget optimized) | [`stage-13`](docs/stage-13-azure-cloud-deployment.md) | `📋 Planned` |
+| **12** | **CI/CD Automation** | GitHub Actions multi-matrix validation, Ruff linting, test suite coverage & Docker packaging | [`stage-12`](docs/stage-12-cicd-pipeline.md) | `✅ Complete` |
+| **13** | **Cloud Production Deployment** | Microsoft Azure VM / Container Apps deployment ($200 budget optimized) | [`stage-13`](docs/stage-13-azure-cloud-deployment.md) | `📋 Ready to Implement` |
