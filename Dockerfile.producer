@@ -49,3 +49,4 @@ USER appuser
 
 ENTRYPOINT ["python", "scripts/run_producer.py"]
 CMD ["--tps", "50"]
+

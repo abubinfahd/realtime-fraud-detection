@@ -50,3 +50,4 @@ USER appuser
 
 ENTRYPOINT ["python", "scripts/run_consumer.py"]
 CMD []
+

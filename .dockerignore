@@ -41,3 +41,4 @@ artifacts/mlflow.db
 # Documentation & Tests (not required in production runtime image)
 docs
 tests
+
