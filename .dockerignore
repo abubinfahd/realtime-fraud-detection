@@ -1,0 +1,43 @@
+# Git & Version Control
+.git
+.gitignore
+.github
+.pre-commit-config.yaml
+
+# Python Virtual Environments & Caches
+.venv
+venv
+env
+__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+coverage.xml
+*.egg-info
+dist
+build
+
+# Local MLOps Runs, Databases & Scratch Artifacts
+mlruns
+mlflow.db
+artifacts/mlruns
+artifacts/model_registry
+artifacts/candidate_model_*.joblib
+artifacts/mlops_dashboard.html
+artifacts/mlflow.db
+
+# Environment & IDE Files
+.env
+.env.*
+!.env.example
+.vscode
+.idea
+*.log
+
+# Documentation & Tests (not required in production runtime image)
+docs
+tests
