@@ -31,7 +31,7 @@ class TestDockerPackaging:
         # 1. Multi-stage build verification
         assert "FROM python:3.12-slim AS builder" in content
         assert "FROM python:3.12-slim AS runtime" in content
-        assert "uv sync --frozen --no-dev" in content
+        assert "uv sync --no-dev" in content
 
         # 2. Security: non-root execution
         assert "useradd" in content

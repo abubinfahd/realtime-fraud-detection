@@ -43,11 +43,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install uv package manager
+        if: matrix.service != 'producer'
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        if: matrix.service != 'producer'
+        run: uv python install 3.12
+
       - name: Ensure baseline ML model artifact exists for container build
         if: matrix.service != 'producer'
         run: |
           if [ ! -f "artifacts/fraud_model.joblib" ]; then
-            pip install uv
             uv sync --no-dev
             uv run python src/fraud_detection/ml/train.py
           fi
@@ -85,7 +94,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: fraud-${{ matrix.service }}:scan
           format: table
@@ -104,4 +113,3 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
-

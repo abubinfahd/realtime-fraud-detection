@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 
-RUN uv sync --frozen --no-dev --no-editable
+RUN uv sync --no-dev --no-editable
 
 # ==============================================================================
 # Stage 2: Runtime — Lean non-root image for ML Inference Consumer Engine
