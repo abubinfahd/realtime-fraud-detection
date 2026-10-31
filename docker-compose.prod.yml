@@ -1,0 +1,179 @@
+name: real-time-fraud-detection-prod
+
+services:
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: fraud-kafka
+    restart: always
+    mem_limit: 2560m
+    ports:
+      - "127.0.0.1:9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      CLUSTER_ID: "${KAFKA_CLUSTER_ID:-MkU3OEVBNTcwNTJENDM2Qk}"
+      KAFKA_CLUSTER_ID: "${KAFKA_CLUSTER_ID:-MkU3OEVBNTcwNTJENDM2Qk}"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:29092,EXTERNAL://localhost:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LOG_RETENTION_HOURS: 24
+      KAFKA_HEAP_OPTS: "-Xmx1536M -Xms1536M"
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+    volumes:
+      - kafka_prod_data:/var/lib/kafka/data
+    networks:
+      - fraud-network
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 25s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: fraud-postgres
+    restart: always
+    mem_limit: 2048m
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_password}
+      POSTGRES_DB: ${POSTGRES_DB:-fraud_detection}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - fraud-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-fraud_detection}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: fraud-redis
+    restart: always
+    mem_limit: 1024m
+    command:
+      - "redis-server"
+      - "--appendonly"
+      - "yes"
+      - "--maxmemory"
+      - "768mb"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - fraud-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  consumer:
+    image: ${CONTAINER_REGISTRY:-ghcr.io/abubinfahd/realtime-fraud-detection}/fraud-consumer:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile.consumer
+    container_name: fraud-consumer
+    restart: always
+    mem_limit: 2048m
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: production
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
+      KAFKA_TOPIC_TRANSACTIONS: "transactions"
+      POSTGRES_HOST: "postgres"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_password}
+      POSTGRES_DB: ${POSTGRES_DB:-fraud_detection}
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+    networks:
+      - fraud-network
+
+  producer:
+    image: ${CONTAINER_REGISTRY:-ghcr.io/abubinfahd/realtime-fraud-detection}/fraud-producer:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile.producer
+    container_name: fraud-producer
+    restart: always
+    mem_limit: 512m
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: production
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
+      KAFKA_TOPIC_TRANSACTIONS: "transactions"
+      PRODUCER_TARGET_TPS: "${PRODUCER_TARGET_TPS:-25}"
+      PRODUCER_ANOMALY_RATE: "${PRODUCER_ANOMALY_RATE:-0.05}"
+    command: ["--tps", "${PRODUCER_TARGET_TPS:-25}"]
+    networks:
+      - fraud-network
+
+  api:
+    image: ${CONTAINER_REGISTRY:-ghcr.io/abubinfahd/realtime-fraud-detection}/fraud-api:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: fraud-api
+    restart: always
+    mem_limit: 1024m
+    ports:
+      - "8000:8000"
+      - "80:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: production
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      POSTGRES_HOST: "postgres"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_password}
+      POSTGRES_DB: ${POSTGRES_DB:-fraud_detection}
+    networks:
+      - fraud-network
+
+networks:
+  fraud-network:
+    name: fraud-prod-network
+    driver: bridge
+
+volumes:
+  kafka_prod_data:
+    name: fraud_kafka_prod_data
+  postgres_prod_data:
+    name: fraud_postgres_prod_data
+  redis_prod_data:
+    name: fraud_redis_prod_data
