@@ -94,3 +94,6 @@ data/*
 # Generated documentation guides
 docs/Real_Time_Fraud_Detection_Bengali_Guide.docx
 docs/Real_Time_Fraud_Detection_Bengali_Guide.md
+
+AZURE_DEPLOYMENT_GUIDE.md
+docs/azure-deployment-personal-runbook.md
