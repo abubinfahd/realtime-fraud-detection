@@ -1,0 +1,66 @@
+name: CD — Deploy to Azure VM
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Container image tag to deploy (e.g. latest, v1.0.0)"
+        required: false
+        default: "latest"
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-azure-vm:
+    name: Zero-Downtime Rollout to Azure VM
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check Azure VM deployment credentials
+        id: check_creds
+        env:
+          VM_HOST: ${{ secrets.AZURE_VM_HOST }}
+          VM_SSH_KEY: ${{ secrets.AZURE_VM_SSH_KEY }}
+        run: |
+          if [ -z "$VM_HOST" ] || [ -z "$VM_SSH_KEY" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Notice: AZURE_VM_HOST / AZURE_VM_SSH_KEY secrets are not set. Skipping live SSH rollout."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure SSH private key
+        if: steps.check_creds.outputs.configured == 'true'
+        env:
+          VM_SSH_KEY: ${{ secrets.AZURE_VM_SSH_KEY }}
+          VM_HOST: ${{ secrets.AZURE_VM_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$VM_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync production compose and deploy containers on Azure VM
+        if: steps.check_creds.outputs.configured == 'true'
+        env:
+          VM_HOST: ${{ secrets.AZURE_VM_HOST }}
+          VM_USER: ${{ secrets.AZURE_VM_USER || 'azureuser' }}
+          IMAGE_TAG: ${{ github.event.inputs.image_tag || 'latest' }}
+        run: |
+          scp docker-compose.prod.yml "${VM_USER}@${VM_HOST}:/home/${VM_USER}/app/docker-compose.prod.yml"
+          scp -r database "${VM_USER}@${VM_HOST}:/home/${VM_USER}/app/"
+          ssh "${VM_USER}@${VM_HOST}" << EOF
+            set -e
+            cd /home/${VM_USER}/app
+            export IMAGE_TAG="${IMAGE_TAG}"
+            docker compose -f docker-compose.prod.yml pull producer consumer api
+            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml ps
+          EOF
