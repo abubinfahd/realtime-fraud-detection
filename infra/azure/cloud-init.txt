@@ -48,3 +48,4 @@ usermod -aG docker azureuser || true
 # 5. Prepare application directory structure
 mkdir -p /home/azureuser/app/database /home/azureuser/app/artifacts
 chown -R azureuser:azureuser /home/azureuser/app
+

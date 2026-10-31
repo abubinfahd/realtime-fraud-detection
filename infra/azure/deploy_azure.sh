@@ -117,3 +117,4 @@ echo "  Public IP:    ${PUBLIC_IP}"
 echo "  Public FQDN:  ${FQDN}"
 echo "  Dashboard:    http://${PUBLIC_IP}:8000/dashboard/"
 echo "============================================================"
+

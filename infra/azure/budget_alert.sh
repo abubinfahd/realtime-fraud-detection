@@ -25,3 +25,4 @@ az consumption budget create \
   --end-date "${END_DATE}"
 
 echo "[+] Budget '${BUDGET_NAME}' ($${BUDGET_AMOUNT}/mo) configured successfully."
+

@@ -177,3 +177,4 @@ volumes:
     name: fraud_postgres_prod_data
   redis_prod_data:
     name: fraud_redis_prod_data
+
