@@ -194,12 +194,22 @@ class InferenceEngine:
         composite_risk = float(np.clip(raw_risk + rule_penalty, 0.0, 1.0))
 
         # Determine final status with rule overrides
+        tx_count_1m = int((velocity or {}).get("tx_count_1m", 1))
         if override_verdict == "REJECTED":
             final_status = "REJECTED"
             composite_risk = 1.0
         elif override_verdict == "FLAGGED":
-            final_status = "FLAGGED" if model_status == "APPROVED" else model_status
-            composite_risk = max(composite_risk, 0.50)
+            final_status = "FLAGGED"
+            composite_risk = round(float(np.clip(max(composite_risk, 0.50), 0.50, 0.74)), 4)
+        elif (
+            not rule_violations
+            and model_status == "REJECTED"
+            and float(transaction.get("amount", 0.0)) < 5000.0
+            and tx_count_1m < 4
+        ):
+            # Single-event ML anomaly without deterministic hard-block rule -> 2FA / Manual Review
+            final_status = "FLAGGED"
+            composite_risk = round(float(np.clip(composite_risk, 0.55, 0.74)), 4)
         else:
             final_status = model_status
 

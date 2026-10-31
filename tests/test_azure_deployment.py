@@ -79,4 +79,3 @@ class TestAzureCDWorkflow:
         content = cd_path.read_text(encoding="utf-8")
         assert "docker-compose.prod.yml" in content
         assert "workflow_dispatch" in content
-

@@ -275,9 +275,11 @@ class FraudConsumer:
         decision["device_id"] = tx_event.device_id
         decision["ip_address"] = tx_event.ip_address
 
-        # 5. Alert Broadcasting for High-Risk Events
+        # 5. Alert & Live Stream Broadcasting
         if decision["status"] in ("FLAGGED", "REJECTED"):
             await self._publish_alert_pubsub(decision, velocity)
+        elif not self.mock_mode:
+            await self.redis_publisher.publish_stream_event(decision, velocity)
 
         # 6. Micro-Batched PostgreSQL Persistence
         if self.persistence_buffer is not None:

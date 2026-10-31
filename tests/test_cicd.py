@@ -101,4 +101,3 @@ class TestProjectToolingConfig:
         assert "pytest" in tool_cfg
         assert "coverage" in tool_cfg
         assert tool_cfg["mypy"]["python_version"] == "3.12"
-

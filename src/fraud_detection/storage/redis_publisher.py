@@ -198,10 +198,15 @@ class RedisPublisher:
             "merchant_category": merchant_category,
             "signals": signals,
             "velocity_context": velocity_context,
+            "inference_latency_ms": round(
+                float(decision.get("total_latency_ms", decision.get("latency_ms", 0.0))), 3
+            ),
             "timings": {
                 "edge_timestamp": edge_ts,
                 "decision_timestamp": now_iso,
-                "inference_latency_ms": round(float(decision.get("latency_ms", 0.0)), 3),
+                "inference_latency_ms": round(
+                    float(decision.get("total_latency_ms", decision.get("latency_ms", 0.0))), 3
+                ),
             },
         }
 
@@ -257,6 +262,27 @@ class RedisPublisher:
                 "Fire-and-forget Redis Pub/Sub publish failed; continuing stream",
                 extra={"error": str(exc)},
             )
+            return False
+
+    async def publish_stream_event(
+        self,
+        decision: dict[str, Any],
+        velocity: dict[str, Any] | None = None,
+    ) -> bool:
+        """
+        Broadcast any scored transaction (including APPROVED) to live Redis Pub/Sub
+        for real-time dashboard TPS telemetry and live ticker updates, without
+        polluting the threat-only `published_alerts` audit list.
+        """
+        if self.mock_mode or self._client is None:
+            return False
+
+        try:
+            payload = self.format_alert_payload(decision, velocity)
+            payload["event_type"] = "STREAM_EVENT"
+            await self._client.publish(self.alerts_channel, json.dumps(payload))
+            return True
+        except Exception:
             return False
 
     async def publish_metrics(self, metrics: dict[str, Any]) -> bool:

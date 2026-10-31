@@ -104,8 +104,9 @@ class TransactionProducer:
         self.total_failed = 0
 
         # Maintain a dynamic pool of synthetic users alongside seeded users
+        # 2,500 users prevents per-user velocity collision at 25-50 TPS
         self.user_pool = list(SEEDED_USERS)
-        for _ in range(50):
+        for _ in range(2500):
             u_id = uuid4()
             a_id = uuid4()
             self.user_pool.append(

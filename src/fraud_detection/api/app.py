@@ -166,11 +166,23 @@ def create_app() -> FastAPI:
     @app.get("/mlops", response_class=HTMLResponse, tags=["MLOps"])
     async def mlops_dashboard() -> HTMLResponse:
         """Serve live MLOps interactive dashboard with experiment tracking and registry governance."""
-        mlops_html_path = Path("artifacts/mlops_dashboard.html")
-        if not mlops_html_path.exists():
-            from scripts.visualize_mlops import generate_html_dashboard, load_mlops_data
+        import sys
+        import tempfile
 
-            generate_html_dashboard(load_mlops_data(Path("artifacts")), mlops_html_path)
+        project_root = Path(__file__).resolve().parent.parent.parent.parent
+        if str(project_root) not in sys.path:
+            sys.path.insert(0, str(project_root))
+
+        from scripts.visualize_mlops import generate_html_dashboard, load_mlops_data
+
+        artifacts_dir = project_root / "artifacts"
+        mlops_html_path = artifacts_dir / "mlops_dashboard.html"
+        if not mlops_html_path.exists():
+            try:
+                generate_html_dashboard(load_mlops_data(artifacts_dir), mlops_html_path)
+            except OSError:
+                mlops_html_path = Path(tempfile.gettempdir()) / "mlops_dashboard.html"
+                generate_html_dashboard(load_mlops_data(artifacts_dir), mlops_html_path)
         return HTMLResponse(content=mlops_html_path.read_text(encoding="utf-8"))
 
     @app.get("/", tags=["General"])
