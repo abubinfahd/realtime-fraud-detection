@@ -1,0 +1,50 @@
+#!/bin/bash
+set -euxo pipefail
+
+# ==============================================================================
+# Stage 13: Azure VM Cloud-Init Bootstrap Script (Ubuntu 22.04 / 24.04 LTS)
+# Paste this entire file into Azure Portal -> Create VM -> Advanced -> Custom data
+# ==============================================================================
+
+export DEBIAN_FRONTEND=noninteractive
+
+# 1. Configure 4 GB Swapfile to prevent OOM kills under peak streaming load
+if [ ! -f /swapfile ]; then
+  fallocate -l 4G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
+# 2. Tune Linux kernel parameters for Apache Kafka (mmap) and Redis (background save)
+cat << 'EOF' >> /etc/sysctl.conf
+vm.swappiness=10
+vm.max_map_count=262144
+vm.overcommit_memory=1
+EOF
+sysctl -p
+
+# 3. Install system utilities and official Docker Engine + Compose v2 plugin
+apt-get update -y
+apt-get install -y ca-certificates curl gnupg lsb-release git htop jq
+
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+apt-get update -y
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# 4. Enable Docker service and grant non-root access to azureuser
+systemctl enable docker
+systemctl start docker
+usermod -aG docker azureuser || true
+
+# 5. Prepare application directory structure
+mkdir -p /home/azureuser/app/database /home/azureuser/app/artifacts
+chown -R azureuser:azureuser /home/azureuser/app
