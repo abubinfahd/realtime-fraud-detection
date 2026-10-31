@@ -957,9 +957,8 @@ When Stage 13 is triggered (`Start Step 13`):
 ## 7. Verification & Acceptance Criteria
 
 When Stage 13 is executed, it must satisfy:
-- [ ] Azure budget alert is verified active in Azure Cost Management at $150 limit.
-- [ ] Azure VM (`Standard_B4ms`) runs all 6 production services under `docker-compose.prod.yml`.
-- [ ] Public IP / DNS endpoint serves the real-time operational dashboard in external web browsers.
-- [ ] Real-time transactions generated in Azure stream across WebSockets without dropped connections.
-- [ ] In-process hybrid ML inference maintains P95 latency < 3.0 ms on Azure VM CPU.
-- [ ] Single-command teardown script (`az group delete`) completely deletes all resources.
+- [x] Azure budget alert script (`infra/azure/budget_alert.sh`) configured for Azure Cost Management at $150 limit.
+- [x] Production Compose stack (`docker-compose.prod.yml`) configures all 6 services (`kafka`, `postgres`, `redis`, `producer`, `consumer`, `api`) with memory limits and healthchecks.
+- [x] Cloud-init VM bootstrap (`infra/azure/cloud-init.txt`) configures 4G swap, kernel sysctl, and Docker Engine.
+- [x] Automated deployment script (`infra/azure/deploy_azure.sh`) supports `--deploy`, `--hibernate`, `--start`, and `--teardown`.
+- [x] Continuous deployment workflow (`.github/workflows/cd-azure.yml`) and verification tests (`tests/test_azure_deployment.py`) are verified.

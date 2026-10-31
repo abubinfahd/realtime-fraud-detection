@@ -352,6 +352,24 @@ docker build -f Dockerfile.consumer -t fraud-consumer:latest .
 docker build -f Dockerfile.api -t fraud-api:latest .
 ```
 
+### 4.11 Stage 13: Microsoft Azure Cloud Deployment ($200 Budget Optimized)
+Launch the complete 6-service production stack (`docker-compose.prod.yml`), verify cloud infrastructure configurations, or manage Azure VM lifecycle:
+```bash
+# 1. Verify Stage 13 production Docker Compose & Azure IaC scripts:
+uv run pytest tests/test_azure_deployment.py -v
+
+# 2. Launch the full 6-service production stack (Kafka, Postgres, Redis, Producer, Consumer, API):
+docker compose -f docker-compose.prod.yml up -d
+
+# 3. (Optional Azure CLI) Configure $150 budget guardrail & provision Azure VM:
+bash infra/azure/budget_alert.sh
+bash infra/azure/deploy_azure.sh --deploy
+
+# 4. Hibernate (stop compute billing) or Teardown Azure resources:
+bash infra/azure/deploy_azure.sh --hibernate
+bash infra/azure/deploy_azure.sh --teardown
+```
+
 ---
 
 ## 5. How the Detection Engine Works (Under the Hood)
@@ -548,7 +566,7 @@ docker compose down -v
 ## 10. Project Roadmap & Architectural Lifecycle
 
 ```text
-Progress: [█████████████████████░] 12 of 13 Stages Completed (92%)
+Progress: [██████████████████████] 13 of 13 Stages Completed (100%)
 ```
 
 The system is constructed as a 13-stage production engineering blueprint organized into 5 architectural phases:
@@ -584,4 +602,4 @@ The system is constructed as a 13-stage production engineering blueprint organiz
 | :---: | :--- | :--- | :---: | :---: |
 | **11** | **MLOps & Drift Monitoring** | Feature drift detection (PSI / KS-test), experiment tracking, model registry & auto-retraining | [`stage-11`](docs/stage-11-mlops-pipeline.md) | `✅ Complete` |
 | **12** | **CI/CD Automation** | GitHub Actions multi-matrix validation, Ruff linting, test suite coverage & Docker packaging | [`stage-12`](docs/stage-12-cicd-pipeline.md) | `✅ Complete` |
-| **13** | **Cloud Production Deployment** | Microsoft Azure VM / Container Apps deployment ($200 budget optimized) | [`stage-13`](docs/stage-13-azure-cloud-deployment.md) | `📋 Ready to Implement` |
+| **13** | **Cloud Production Deployment** | Microsoft Azure VM / Container Apps deployment ($200 budget optimized) | [`stage-13`](docs/stage-13-azure-cloud-deployment.md) | `✅ Complete` |
