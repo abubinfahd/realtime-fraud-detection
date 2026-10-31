@@ -235,8 +235,18 @@ class FraudConsumer:
         # 3. Retrieve Geolocation & Evaluate Deterministic Rules
         last_loc = await self.redis_store.get_last_location(user_id)
 
-        # Update last location if current transaction contains coordinates
-        if tx_event.location_lat is not None and tx_event.location_lon is not None:
+        rule_result = self.rule_engine.evaluate(
+            transaction=tx_dict,
+            velocity=velocity,
+            last_location=last_loc,
+        )
+
+        # Update last location only if transaction was not hard-rejected for impossible travel
+        if (
+            not rule_result.is_rejected
+            and tx_event.location_lat is not None
+            and tx_event.location_lon is not None
+        ):
             await self.redis_store.set_last_location(
                 user_id=user_id,
                 lat=tx_event.location_lat,
@@ -245,12 +255,6 @@ class FraudConsumer:
                 country=tx_event.location_country,
                 city=tx_event.location_city,
             )
-
-        rule_result = self.rule_engine.evaluate(
-            transaction=tx_dict,
-            velocity=velocity,
-            last_location=last_loc,
-        )
 
         # 4. Hybrid ML Inference & Decision Synthesis
         decision = self.inference_engine.score_transaction(

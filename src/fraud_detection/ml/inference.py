@@ -195,17 +195,22 @@ class InferenceEngine:
 
         # Determine final status with rule overrides
         tx_count_1m = int((velocity or {}).get("tx_count_1m", 1))
+        tx_amount = float(transaction.get("amount", 0.0))
         if override_verdict == "REJECTED":
             final_status = "REJECTED"
             composite_risk = 1.0
         elif override_verdict == "FLAGGED":
             final_status = "FLAGGED"
-            composite_risk = round(float(np.clip(max(composite_risk, 0.50), 0.50, 0.74)), 4)
+            composite_risk = round(float(np.clip(max(composite_risk, 0.52), 0.52, 0.74)), 4)
+        elif not rule_violations and tx_amount <= 10.0 and tx_count_1m < 6:
+            # Early micro-charges before velocity threshold is reached pass as normal
+            final_status = "APPROVED"
+            composite_risk = round(min(composite_risk, 0.25), 4)
         elif (
             not rule_violations
             and model_status == "REJECTED"
-            and float(transaction.get("amount", 0.0)) < 5000.0
-            and tx_count_1m < 4
+            and tx_amount < 10000.0
+            and tx_count_1m < 8
         ):
             # Single-event ML anomaly without deterministic hard-block rule -> 2FA / Manual Review
             final_status = "FLAGGED"

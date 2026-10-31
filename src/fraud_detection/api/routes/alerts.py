@@ -75,20 +75,32 @@ async def get_recent_alerts(
                 "Failed to fetch recent threats from repository", extra={"error": str(exc)}
             )
 
-    # Fallback default initial threat alert fixture for mock or empty state
+    # Fallback default initial threat alert fixtures for mock or empty state
     return [
         {
             "transaction_ref": "tx_initial_sample_001",
             "user_id": "00000000-0000-0000-0000-000000000001",
+            "amount": 1850.00,
+            "currency": "USD",
+            "merchant_name": "Midnight Crypto Exchange",
+            "merchant_category": "crypto",
+            "status": "FLAGGED",
+            "risk_score": 0.6420,
+            "rule_violations": ["RULE_05"],
+            "created_at": datetime.now(UTC).isoformat(),
+        },
+        {
+            "transaction_ref": "tx_initial_sample_002",
+            "user_id": "00000000-0000-0000-0000-000000000002",
             "amount": 4250.00,
             "currency": "USD",
-            "merchant_name": "CryptoSwap Global",
-            "merchant_category": "cryptocurrency",
+            "merchant_name": "Harrods Luxury London",
+            "merchant_category": "jewelry",
             "status": "REJECTED",
             "risk_score": 0.9420,
-            "rule_violations": ["RULE_SANCTIONED_DEST", "RULE_IMPOSSIBLE_TRAVEL"],
+            "rule_violations": ["RULE_03"],
             "created_at": datetime.now(UTC).isoformat(),
-        }
+        },
     ]
 
 

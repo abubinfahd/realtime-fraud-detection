@@ -369,7 +369,20 @@
     }
 
     try {
-      // 2. Fetch metrics
+      // 2. Fetch summary counts from database
+      const sRes = await fetch('/api/v1/alerts/summary');
+      if (sRes.ok) {
+        const summary = await sRes.json();
+        if (summary.total) {
+          STATE.totalProcessed = Math.max(STATE.totalProcessed, summary.total);
+        }
+      }
+    } catch (e) {
+      console.warn('Summary hydration fetch skipped:', e);
+    }
+
+    try {
+      // 3. Fetch metrics
       const mRes = await fetch('/api/v1/metrics');
       if (mRes.ok) {
         const metrics = await mRes.json();
@@ -439,11 +452,14 @@
 
   // --- Inbound Stream Event Handler ---
   function handleStreamPayload(payload) {
+    const eventType = payload.event_type || 'FRAUD_ALERT';
+    if (eventType === 'CONNECTION_ESTABLISHED' || eventType === 'PONG') {
+      return;
+    }
+
     STATE.totalProcessed++;
     STATE.eventsInWindow++;
 
-    // Check if it's an alert or heartbeat/general event
-    const eventType = payload.event_type || 'FRAUD_ALERT';
     const status = (payload.status || 'APPROVED').toUpperCase();
 
     if (payload.inference_latency_ms) {

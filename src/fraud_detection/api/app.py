@@ -156,34 +156,45 @@ def create_app() -> FastAPI:
     app.include_router(metrics.router)
     app.include_router(alerts.router)
 
-    # Mount live operations dashboard frontend
-    dashboard_dir = Path(__file__).resolve().parent.parent.parent.parent / "dashboard"
-    if dashboard_dir.is_dir():
-        app.mount(
-            "/dashboard", StaticFiles(directory=str(dashboard_dir), html=True), name="dashboard"
-        )
+    # Mount live operations dashboard frontend across local and container paths
+    for candidate_dash in [
+        Path("/app/dashboard"),
+        Path.cwd() / "dashboard",
+        Path(__file__).resolve().parent.parent.parent.parent / "dashboard",
+    ]:
+        if candidate_dash.is_dir():
+            app.mount(
+                "/dashboard",
+                StaticFiles(directory=str(candidate_dash), html=True),
+                name="dashboard",
+            )
+            break
 
     @app.get("/mlops", response_class=HTMLResponse, tags=["MLOps"])
     async def mlops_dashboard() -> HTMLResponse:
         """Serve live MLOps interactive dashboard with experiment tracking and registry governance."""
-        import sys
-        import tempfile
+        from fraud_detection.mlops.dashboard_renderer import load_mlops_data, render_mlops_html
 
-        project_root = Path(__file__).resolve().parent.parent.parent.parent
-        if str(project_root) not in sys.path:
-            sys.path.insert(0, str(project_root))
+        engine = getattr(app.state, "inference_engine", None)
+        bundle = getattr(engine, "bundle", None) if engine is not None else None
+        data = load_mlops_data(model_bundle=bundle)
+        html_content = render_mlops_html(data)
+        return HTMLResponse(content=html_content)
 
-        from scripts.visualize_mlops import generate_html_dashboard, load_mlops_data
+    @app.get("/api/v1/mlops/status", tags=["MLOps"])
+    async def mlops_status() -> dict[str, Any]:
+        """Return structured JSON telemetry for MLOps experiment tracking and model registry."""
+        from fraud_detection.mlops.dashboard_renderer import load_mlops_data
 
-        artifacts_dir = project_root / "artifacts"
-        mlops_html_path = artifacts_dir / "mlops_dashboard.html"
-        if not mlops_html_path.exists():
-            try:
-                generate_html_dashboard(load_mlops_data(artifacts_dir), mlops_html_path)
-            except OSError:
-                mlops_html_path = Path(tempfile.gettempdir()) / "mlops_dashboard.html"
-                generate_html_dashboard(load_mlops_data(artifacts_dir), mlops_html_path)
-        return HTMLResponse(content=mlops_html_path.read_text(encoding="utf-8"))
+        engine = getattr(app.state, "inference_engine", None)
+        bundle = getattr(engine, "bundle", None) if engine is not None else None
+        data = load_mlops_data(model_bundle=bundle)
+        return {
+            "status": "active",
+            "runs_count": len(data.get("runs", [])),
+            "runs": data.get("runs", []),
+            "registry": data.get("registry", {}),
+        }
 
     @app.get("/", tags=["General"])
     async def root() -> dict[str, Any]:

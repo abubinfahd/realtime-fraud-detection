@@ -111,3 +111,17 @@ class TestAPIEndpoints:
         assert resp.status_code == 200
         assert "WebSocket" in resp.text
         assert "playAlertChime" in resp.text
+
+    def test_mlops_dashboard_and_status_endpoints(self, client: TestClient) -> None:
+        """Verify /mlops HTML dashboard and /api/v1/mlops/status JSON API."""
+        resp = client.get("/mlops")
+        assert resp.status_code == 200
+        assert "MLOps Mission Control" in resp.text
+        assert "Model Registry Version History" in resp.text
+
+        status_resp = client.get("/api/v1/mlops/status")
+        assert status_resp.status_code == 200
+        status_data = status_resp.json()
+        assert status_data["status"] == "active"
+        assert status_data["runs_count"] >= 1
+        assert "registry" in status_data

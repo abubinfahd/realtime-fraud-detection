@@ -48,7 +48,7 @@ class AnomalyGenerator:
         Generates 8-15 rapid micro-transactions ($1.00 - $5.00) within 15-20 seconds.
         """
         now = base_timestamp or datetime.now(UTC)
-        count = burst_size or random.randint(8, 15)
+        count = burst_size or 8
         events: list[TransactionEvent] = []
 
         online_cats = ["retail", "utilities", "electronics"]
@@ -72,8 +72,8 @@ class AnomalyGenerator:
                     merchant_name=merchant,
                     location_country="US",
                     location_city="Online Gateway",
-                    location_lat=40.7128,
-                    location_lon=-74.0060,
+                    location_lat=None,
+                    location_lon=None,
                     device_id=attacker_device,
                     ip_address=attacker_ip,
                     timestamp=event_ts,
@@ -226,8 +226,8 @@ class AnomalyGenerator:
         account_id: UUID,
         timestamp: datetime | None = None,
     ) -> list[TransactionEvent]:
-        """Pick one of the 4 anomaly topologies at random."""
-        choice = random.choice([1, 2, 3, 4])
+        """Pick one of the 4 anomaly topologies, weighted toward FLAGGED review patterns."""
+        choice = random.choices([1, 2, 3, 4], weights=[0.12, 0.48, 0.10, 0.30], k=1)[0]
         if choice == 1:
             return cls.generate_velocity_spike(user_id, account_id, timestamp)
         elif choice == 2:
