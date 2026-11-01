@@ -3,7 +3,7 @@ name = "fraud-detection"
 version = "0.1.0"
 description = "Production-grade, event-driven streaming system for real-time financial fraud detection"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "lightgbm>=4.3.0",
     "scikit-learn>=1.5.0",
