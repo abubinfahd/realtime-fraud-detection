@@ -1,0 +1,8 @@
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineEndpoint.schema.json
+name: fraud-live-endpoint
+description: Real-time Hybrid Fraud Detection (LightGBM + Isolation Forest) Online Endpoint
+auth_mode: key
+tags:
+  project: real-time-fraud-detection
+  stage: production
+

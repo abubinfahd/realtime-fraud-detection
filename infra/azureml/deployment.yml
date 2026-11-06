@@ -1,0 +1,21 @@
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
+name: real-time-fraud-v1
+endpoint_name: fraud-live-endpoint
+model:
+  name: fraud_hybrid_model
+  version: 1
+  path: ../../artifacts/fraud_model.joblib
+code_configuration:
+  code: ../../artifacts
+  scoring_script: score.py
+environment:
+  name: fraud-inference-env
+  version: 1
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+  conda_file: ../../artifacts/conda.yaml
+instance_type: Standard_DS2_v2
+instance_count: 1
+request_settings:
+  request_timeout_ms: 60000
+  max_concurrent_requests_per_instance: 4
+
