@@ -1,0 +1,13 @@
+name: fraud-inference-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - lightgbm>=4.3.0
+      - scikit-learn>=1.5.0
+      - joblib>=1.4.0
+      - numpy>=1.26.0
+      - azureml-inference-server-http
+
