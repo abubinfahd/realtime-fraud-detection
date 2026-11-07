@@ -1,30 +1,35 @@
-name: CD - Deploy Model to Azure ML
+name: CD - Azure ML Cloud MLOps Pipeline
 
 on:
   workflow_dispatch:
     inputs:
-      endpoint_name:
-        description: "Globally unique Azure ML Endpoint name"
+      unique_suffix:
+        description: "Unique resource name suffix (e.g. fahd40)"
         required: true
-        default: "fraud-live-fahd40"
+        default: "fahd40"
+      skip_train:
+        description: "Skip cloud training job (only register & deploy)"
+        type: boolean
+        default: false
   push:
     branches:
       - master
     paths:
-      - "artifacts/fraud_model.joblib"
+      - "src/fraud_detection/**"
       - "artifacts/score.py"
       - "artifacts/conda.yaml"
       - "infra/azureml/**"
+      - "scripts/run_azureml_pipeline.py"
       - "scripts/deploy_azureml.py"
 
 jobs:
-  deploy-azureml:
-    name: Register & Deploy to Azure ML Endpoint
+  ci-test-and-cloud-deploy:
+    name: CI Test ➔ Azure ML Cloud Train ➔ Register ➔ Deploy
     runs-on: ubuntu-latest
     if: ${{ vars.ENABLE_AZUREML_CD == 'true' || github.event_name == 'workflow_dispatch' }}
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout Codebase
         uses: actions/checkout@v4
 
       - name: Set up Python 3.11
@@ -32,9 +37,15 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Azure ML SDK v2 & Dependencies
+      - name: Install Dependencies & Run CI Tests
         run: |
           python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest pytest-cov
+          pytest tests/unit/ -v
+
+      - name: Install Azure ML SDK v2
+        run: |
           pip install azure-ai-ml azure-identity joblib lightgbm scikit-learn numpy
 
       - name: Azure Login via Service Principal
@@ -42,19 +53,15 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Train Model if Artifact Missing
-        run: |
-          if [ ! -f artifacts/fraud_model.joblib ]; then
-            pip install -e .
-            python -m fraud_detection.ml.train
-          fi
-
-      - name: Deploy Model & Endpoint to Azure ML
+      - name: Execute Full End-to-End Azure ML Pipeline
         env:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
           AZURE_WORKSPACE_NAME: ${{ secrets.AZURE_WORKSPACE_NAME }}
-          AZUREML_ENDPOINT_NAME: ${{ github.event.inputs.endpoint_name || 'fraud-live-fahd40' }}
+          AZUREML_UNIQUE_SUFFIX: ${{ github.event.inputs.unique_suffix || vars.AZUREML_UNIQUE_SUFFIX || 'fahd40' }}
         run: |
-          python scripts/deploy_azureml.py
-
+          FLAGS=""
+          if [ "${{ github.event.inputs.skip_train }}" = "true" ]; then
+            FLAGS="--skip-train"
+          fi
+          python scripts/run_azureml_pipeline.py $FLAGS

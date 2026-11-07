@@ -1,0 +1,16 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+experiment_name: fraud-cloud-training-fahd40
+display_name: hybrid-fraud-model-train
+description: Cloud-native execution of fraud detection codebase on Azure ML Compute Cluster
+code: ../../
+command: >-
+  pip install -e . &&
+  python -m fraud_detection.ml.train
+environment: azureml:AzureML-sklearn-1.5-ubuntu20.04-py38-cpu@latest
+compute: azureml:cc-cpu-fahd40
+resources:
+  instance_count: 1
+tags:
+  project: real-time-fraud-detection
+  environment: production
+  framework: lightgbm-scikit-learn
