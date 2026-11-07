@@ -6,9 +6,11 @@ Orchestrates data generation, stratified splitting, model fitting
 artifact serialization, and CPU inference latency benchmarking.
 """
 
+import argparse
 import os
 import warnings
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import joblib
@@ -234,8 +236,6 @@ def train_and_evaluate(
 
 def main() -> None:
     """CLI script entrypoint."""
-    import argparse
-
     parser = argparse.ArgumentParser(description="Train Offline Hybrid Fraud Detection Model")
     parser.add_argument(
         "--data-path",
