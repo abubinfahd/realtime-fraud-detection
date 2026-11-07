@@ -81,15 +81,14 @@ desktop.ini
 # Docker local persistence / runtime
 .docker/
 
-# Data and Model Artifacts (keep structure via .gitkeep)
+# Data and Model Artifacts (keep structure via .gitkeep, no datasets in Git)
 artifacts/*
 !artifacts/.gitkeep
 data/*
 !data/.gitkeep
 !data/demo_inference_10.csv
-!data/raw/
-!data/raw/transactions_10k.csv
-!data/raw/demo_inference_10.csv
+data/raw/*
+!data/raw/.gitkeep
 
 # Generated documentation guides
 docs/Real_Time_Fraud_Detection_Bengali_Guide.docx

@@ -29,15 +29,19 @@ warnings.filterwarnings("ignore", category=UserWarning)
 RANDOM_SEED: int = 42
 
 
-def train_and_evaluate() -> dict[str, Any]:
+def train_and_evaluate(
+    data_path: Path | str | None = None,
+    output_model_path: Path | str | None = None,
+) -> dict[str, Any]:
     """Train LightGBM + Isolation Forest, evaluate PR-AUC, serialize model, and benchmark."""
     print("=" * 70)
     print("Stage 3: Offline ML Model Training & Serialization Pipeline")
     print("=" * 70)
 
-    # 1. Dataset Loading (loads data/raw/transactions_10k.csv or generates it)
-    print(f"[*] Loading transaction dataset from {settings.DEMO_DATA_PATH}...")
-    df = load_or_generate_dataset()
+    # 1. Dataset Loading (loads from custom path, or settings.DEMO_DATA_PATH, or generates it)
+    dataset_file = Path(data_path) if data_path else settings.DEMO_DATA_PATH
+    print(f"[*] Loading transaction dataset from {dataset_file}...")
+    df = load_or_generate_dataset(filepath=dataset_file)
     X, y = preprocess_dataframe(df)
 
     # 2. Stratified Train / Validation / Test Split (70% / 15% / 15%)
@@ -153,7 +157,8 @@ def train_and_evaluate() -> dict[str, Any]:
     )
 
     # 6. Serialization
-    settings.ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+    save_dest = Path(output_model_path) if output_model_path else settings.MODEL_PATH
+    save_dest.parent.mkdir(parents=True, exist_ok=True)
     bundle = {
         "version": "1.0.0",
         "trained_at": datetime.now(UTC).isoformat(),
@@ -175,9 +180,9 @@ def train_and_evaluate() -> dict[str, Any]:
         },
     }
 
-    print(f"\n[*] Serializing trained artifact to {settings.MODEL_PATH}...")
-    joblib.dump(bundle, settings.MODEL_PATH, compress=3)
-    file_size_kb = os.path.getsize(settings.MODEL_PATH) / 1024
+    print(f"\n[*] Serializing trained artifact to {save_dest}...")
+    joblib.dump(bundle, save_dest, compress=3)
+    file_size_kb = os.path.getsize(save_dest) / 1024
     print(f"[+] Artifact serialized successfully ({file_size_kb:.1f} KB).")
 
     # 7. CPU Inference Latency Benchmark
@@ -188,7 +193,7 @@ def train_and_evaluate() -> dict[str, Any]:
 
     from fraud_detection.ml.inference import InferenceEngine
 
-    engine = InferenceEngine(model_path=settings.MODEL_PATH)
+    engine = InferenceEngine(model_path=save_dest)
     benchmark_samples = X_test.iloc[:benchmark_count].values
 
     latencies_ms: list[float] = []
@@ -229,7 +234,23 @@ def train_and_evaluate() -> dict[str, Any]:
 
 def main() -> None:
     """CLI script entrypoint."""
-    train_and_evaluate()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Train Offline Hybrid Fraud Detection Model")
+    parser.add_argument(
+        "--data-path",
+        type=str,
+        default=None,
+        help="Path to custom CSV dataset (e.g. from Azure ML Data Asset or local path)",
+    )
+    parser.add_argument(
+        "--output-model-path",
+        type=str,
+        default=None,
+        help="Destination path for serialized model bundle (defaults to artifacts/fraud_model.joblib)",
+    )
+    args = parser.parse_args()
+    train_and_evaluate(data_path=args.data_path, output_model_path=args.output_model_path)
 
 
 if __name__ == "__main__":
