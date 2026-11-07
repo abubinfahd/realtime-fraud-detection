@@ -1,5 +1,6 @@
-name: CD - Azure ML Cloud MLOps Pipeline
+name: CD - Azure ML Cloud MLOps Pipeline (Manual Trigger Only)
 
+# Manual trigger only - code push will NOT automatically run Azure ML
 on:
   workflow_dispatch:
     inputs:
@@ -11,22 +12,11 @@ on:
         description: "Skip cloud training job (only register & deploy)"
         type: boolean
         default: false
-  push:
-    branches:
-      - master
-    paths:
-      - "src/fraud_detection/**"
-      - "artifacts/score.py"
-      - "artifacts/conda.yaml"
-      - "infra/azureml/**"
-      - "scripts/run_azureml_pipeline.py"
-      - "scripts/deploy_azureml.py"
 
 jobs:
   ci-test-and-cloud-deploy:
     name: CI Test ➔ Azure ML Cloud Train ➔ Register ➔ Deploy
     runs-on: ubuntu-latest
-    if: ${{ vars.ENABLE_AZUREML_CD == 'true' || github.event_name == 'workflow_dispatch' }}
 
     steps:
       - name: Checkout Codebase
@@ -58,7 +48,7 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
           AZURE_WORKSPACE_NAME: ${{ secrets.AZURE_WORKSPACE_NAME }}
-          AZUREML_UNIQUE_SUFFIX: ${{ github.event.inputs.unique_suffix || vars.AZUREML_UNIQUE_SUFFIX || 'fahd40' }}
+          AZUREML_UNIQUE_SUFFIX: ${{ github.event.inputs.unique_suffix || 'fahd40' }}
         run: |
           FLAGS=""
           if [ "${{ github.event.inputs.skip_train }}" = "true" ]; then
